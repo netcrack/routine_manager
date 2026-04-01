@@ -27,7 +27,7 @@ Enable users to create, run, control, and complete a single routine composed of 
 | INT-04 | Reorder Alarms | A user can modify the sequence order of alarms before execution, and the next run follows the saved order. | High |
 | INT-05 | Stop Active Routine | A user can stop an active routine at any time, and no remaining alarms in that routine continue after stop is confirmed. | High |
 | INT-06 | Pause Active Routine | A user can pause an active routine at any time, and no alarm progression occurs while the routine remains paused. | High |
-| INT-07 | Notify Alarm Due Events | A user receives one notification when an alarm duration is reached. | High |
+| INT-07 | Notify Alarm Due Events | A user receives one notification when an alarm duration is reached, regardless of whether the app is in the foreground, background, or closed. | High |
 | INT-08 | Ring Alarm Until Stopped | A due alarm remains in an active alert state until the user explicitly stops it. | High |
 | INT-09 | Maintain Single Active Routine | A user can have only one active routine at a time, and any attempt to start another routine while one is active is blocked. | Medium |
 | INT-10 | Update Existing Routine Content | A user can edit the name, alarm durations, or alarm order of an existing routine, and the saved changes are reflected in the next run. | Medium |

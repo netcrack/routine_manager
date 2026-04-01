@@ -11,24 +11,24 @@ This document breaks down Journey 1 into actionable development tasks following 
 
 **Goal:** Establish pure Dart entities, repository interfaces, and use cases. No Flutter UI or Hive dependencies.
 
-- [ ] **Task 1.1: Define `Alarm` Entity**
+- [x] **Task 1.1: Define `Alarm` Entity**
   - **Path:** `lib/features/routine_manager/domain/entities/alarm.dart`
   - **Description:** Create the pure Dart entity with properties: `id` (String, UUID), `durationSeconds` (int, >0 validation), `orderIndex` (int). 
   - **Intent:** `// Fulfills INT-02, INT-04`
   - **Verification:** Unit tests confirming >0 duration validation.
 
-- [ ] **Task 1.2: Define `Routine` Entity**
+- [x] **Task 1.2: Define `Routine` Entity**
   - **Path:** `lib/features/routine_manager/domain/entities/routine.dart`
   - **Description:** Create the entity with properties: `id` (String), `name` (String), `alarms` (List<Alarm>, at least 1), `createdAt` (DateTime), `updatedAt` (DateTime).
   - **Intent:** `// Fulfills INT-01, INT-04, INT-10`
   - **Verification:** Unit tests for name validation and `alarms.isNotEmpty` constraint.
 
-- [ ] **Task 1.3: Define `RoutineRepository` Interface**
+- [x] **Task 1.3: Define `RoutineRepository` Interface**
   - **Path:** `lib/features/routine_manager/domain/repositories/routine_repository.dart`
   - **Description:** Define abstract methods: `saveRoutine(Routine)`, `getRoutine(String)`, `getAllRoutines()`, `deleteRoutine(String)`.
   - **Intent:** `// Fulfills INT-01, INT-10`
 
-- [ ] **Task 1.4: Implement Domain Use Cases**
+- [x] **Task 1.4: Implement Domain Use Cases**
   - **Paths:** `lib/features/routine_manager/domain/usecases/...`
   - **Description:** 
     - `SaveRoutineUseCase`: Validates routine constraints before saving to repository.
@@ -41,11 +41,11 @@ This document breaks down Journey 1 into actionable development tasks following 
 
 **Goal:** Implement Hive models, type adapters, and the concrete repository.
 
-- [ ] **Task 2.1: Create Hive Models**
+- [x] **Task 2.1: Create Hive Models**
   - **Paths:** `lib/features/routine_manager/data/models/alarm_model.dart`, `lib/features/routine_manager/data/models/routine_model.dart`
   - **Description:** Implement Hive objects matching the domain entities. Generate TypeAdapters. Add `toEntity()` and `fromEntity()` mapping functions.
 
-- [ ] **Task 2.2: Implement `RoutineRepositoryImpl`**
+- [x] **Task 2.2: Implement `RoutineRepositoryImpl`**
   - **Path:** `lib/features/routine_manager/data/repositories/routine_repository_impl.dart`
   - **Description:** Implement the `RoutineRepository` utilizing Hive boxes. Ensure exceptions/errors on quota limits or I/O are handled.
   - **Verification:** Mock Hive to verify data mapping between Models and Entities.
@@ -56,13 +56,13 @@ This document breaks down Journey 1 into actionable development tasks following 
 
 **Goal:** Build Riverpod providers and the Flutter UI ensuring no direct data layer access.
 
-- [ ] **Task 3.1: Implement Riverpod Controllers/Providers**
+- [x] **Task 3.1: Implement Riverpod Controllers/Providers**
   - **Paths:** `lib/features/routine_manager/presentation/controllers/...`
   - **Description:**
     - `routine_list_provider`: Fetches and exposes `List<Routine>` state.
     - `routine_builder_controller`: Manages transient form state (name input, alarm list modification, drag-and-drop reordering state).
 
-- [ ] **Task 3.2: Build Routine List Screen (Home)**
+- [x] **Task 3.2: Build Routine List Screen (Home)**
   - **Path:** `lib/features/routine_manager/presentation/screens/routine_list_screen.dart`
   - **Description:** 
     - Display an empty state if no routines exist.
@@ -70,7 +70,7 @@ This document breaks down Journey 1 into actionable development tasks following 
     - Floating Action Button (FAB) to trigger navigation to Builder Screen.
   - **Intent:** `// Fulfills INT-01`
 
-- [ ] **Task 3.3: Build Routine Builder Screen**
+- [x] **Task 3.3: Build Routine Builder Screen**
   - **Path:** `lib/features/routine_manager/presentation/screens/routine_builder_screen.dart`
   - **Description:**
     - Unique Routine Name text field.
@@ -79,7 +79,7 @@ This document breaks down Journey 1 into actionable development tasks following 
     - "Save" button to trigger repository persistence and navigate back.
   - **Intent:** `// Fulfills INT-01, INT-02, INT-04, INT-10`
 
-- [ ] **Task 3.4: Implement Unhappy Paths UI State**
+- [x] **Task 3.4: Implement Unhappy Paths UI State**
   - **Path:** Handled in the Builder Screen / Controllers.
   - **Description:**
     - **Empty Routine Prevention:** Disable the save button or show error styling if user tries to save 0 alarms (INT-01 constraint).

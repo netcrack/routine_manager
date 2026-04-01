@@ -43,10 +43,20 @@ This journey covers the active session state management constraint (`INT-09`).
 
 3.  **Active Session Screen (Ringing State)**
     *   **Trigger:** The countdown reaches 0 duration.
-    *   **Action (INT-07 & INT-08 Check):** A system notification fires ONCE. Meanwhile, continuous audio/visual ringing alerts the user persistently on the screen.
+    *   **Action (INT-07 & INT-08 Check):** A system notification fires with persistent looping audio (native "Ringing" state). Meanwhile, the screen shows a high-priority "pulsing" UI to alert the user visually.
     *   **Action (INT-03 Check):** User taps "Stop Alarm / Next". The ringing stops. The current alarm is marked done, and the next sequential alarm automatically enters the "Running State".
 
-4.  **Active Session Screen (Completion)**
+4.  **Active Session (Background & Termination)**
+    *   **Trigger:** User minimizes the app or force-closes it during the "Running State".
+    *   **Action (INT-07 Check):** The system-level scheduled notification remains active.
+    *   *Result:* When the duration is reached, the system notification fires even if the app process is dead.
+
+5.  **Active Session (App Resume & Recovery)**
+    *   **Trigger:** User taps the notification or manually relaunches the app after the alarm duration has passed.
+    *   **Action (State Recovery Check):** The app reads the persisted `ActiveSession` and calculates that the alarm is overdue.
+    *   *Result:* The app immediately enters the "Ringing State" UI (`INT-08`), allowing the user to proceed to the next alarm.
+
+6.  **Active Session Screen (Completion)**
     *   **Trigger:** The final alarm in the sequence reaches 0 duration and is stopped by the User.
     *   **Action (INT-11 Check):** The active session transitions to a "Completed" state. A success message is shown locally atomically, and the active session lock `INT-09` is cleared. User returns to the Routine List Screen.
 

@@ -60,6 +60,7 @@ Satisfies: `INT-03`, `INT-05`, `INT-06`, `INT-08`, `INT-09`, `INT-11`
 *   `routineId`: `String` (The ID of the currently active routine)
 *   `activeAlarmIndex`: `int` (Points to the currently active alarm within the routine)
 *   `elapsedSeconds`: `int` (Time elapsed for the current alarm)
+*   `startTime`: `DateTime?` (Timestamp when the current alarm started or was resumed)
 *   `status`: `enum SessionStatus { inactive, running, paused, ringing, completed }`
 
 **Strict State Transitions:**
@@ -69,10 +70,12 @@ Satisfies: `INT-03`, `INT-05`, `INT-06`, `INT-08`, `INT-09`, `INT-11`
 * `ringing` -> `running` (User moves to next alarm), `completed` (Last alarm finished), `inactive` (User stops routine)
 * `completed` -> `inactive` (User dismisses success state)
 
-### 4.4. Domain Service: `NotificationService` / `AudioService`
-Satisfies: `INT-07`
-*   Must be defined as abstract interfaces in the `domain/` layer.
-*   Implementation must reside in the `data/` or `core/` layer to keep the domain pure, allowing UI-agnostic execution of audio/visual ringing alerts (`INT-08`) and system-level notifications (`INT-07`).
+### 4.4. Domain Service: `NotificationService`
+Satisfies: `INT-07`, `INT-08`
+*   Must be defined as an abstract interface in the `domain/` layer.
+*   Implementation must reside in the `data/` or `core/` layer to keep the domain pure.
+*   **Ringing Requirement (`INT-08`):** Must leverage native notification flags (e.g., `FLAG_INSISTENT` on Android, `critical` sound on iOS) to ensure audio alerts loop continuously until stopped by the user, even if the app process is terminated.
+*   **Visual Alerting:** The presentation layer must react to the `ringing` state with distinct UI patterns (e.g., pulsing animations) while the service provides the audio trigger.
 
 ---
 
@@ -87,5 +90,7 @@ To ensure deterministic and verifiable AI code generation without ambiguity:
 
 ## 6. Background Execution & Permissions
 To ensure timer precision (`INT-02`) and reliable notifications (`INT-07`) when the app is backgrounded or killed:
-1.  **Strict Background Rule:** Do **not** rely on standard Dart `Timer.periodic`. Implement background isolate processing or delegate scheduled alarms to system APIs (using `flutter_local_notifications` scheduling, `workmanager`, or Android `AlarmManager` / iOS `UNUserNotificationCenter`).
-2.  **Permissions Required:** The app must explicitly request and verify `Notification`, `Exact Alarms` (Android 12+), and `Background Audio` routing. If denied, the UI must block routine execution and prompt the user.
+1.  **Strict Background Rule:** Do **not** rely on standard Dart `Timer.periodic` for the source of truth. Delegate scheduled alarms to system APIs (using `flutter_local_notifications` scheduling, `workmanager`, or Android `AlarmManager` / iOS `UNUserNotificationCenter`) at the *start* of an alarm.
+2.  **State Recovery Rule:** Upon app launch or resume, the `ActiveSessionController` must calculate the elapsed time using `startTime` and current time. If `now >= startTime + totalSeconds`, the session must transition immediately to the `ringing` state, even if no Dart timer was running.
+3.  **Persistence Rule:** `ActiveSession` state must be persisted to local storage (`hive`) to ensure the routine can be recovered after the app process is terminated or the device restarts.
+4.  **Permissions Required:** The app must explicitly request and verify `Notification`, `Exact Alarms` (Android 12+), and `Background Audio` routing. If denied, the UI must block routine execution and prompt the user.
