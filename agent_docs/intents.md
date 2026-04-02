@@ -32,6 +32,8 @@ Create, update, retrieve, and delete routines, including the configuration of th
 | INT-02 | Define Alarm-Level Duration | A user can assign a duration to each alarm in the routine, and each alarm enters a due state when its configured duration is reached. | High |
 | INT-04 | Reorder Alarms | A user can modify the sequence order of alarms before execution, and the next run follows the saved order. | High |
 | INT-10 | Update Existing Routine Content | A user can edit the name, alarm durations, or alarm order of an existing routine, and the saved changes are reflected in the next run. | Medium |
+| INT-14 | Bulk Update Alarm Durations | A user can apply a single duration value to all alarms within a routine simultaneously during creation or editing, and the change is persisted across all alarms in that routine. | Medium |
+
 
 ### CAP-02: Session Execution Engine
 Control lifecycle and state transitions of a single active routine session.

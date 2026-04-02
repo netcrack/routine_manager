@@ -63,9 +63,23 @@ void main() {
       );
       
       final updated = routine.copyWith(name: 'Power Yoga', alarms: [alarm1, alarm2]);
-      
       expect(updated.name, 'Power Yoga');
       expect(updated.alarms, hasLength(2));
+    });
+
+    test('updateAllAlarmDurations should update all alarms to the same duration // Verifies INT-14', () {
+      final routine = Routine(
+        id: '1',
+        name: 'Yoga',
+        alarms: [alarm1, alarm2],
+        createdAt: now,
+        updatedAt: now,
+      );
+      
+      final updated = routine.updateAllAlarmDurations(300);
+      
+      expect(updated.alarms.every((a) => a.durationSeconds == 300), isTrue);
+      expect(updated.updatedAt.isAfter(now), isTrue);
     });
   });
 }

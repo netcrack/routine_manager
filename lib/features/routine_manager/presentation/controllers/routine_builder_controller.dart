@@ -52,6 +52,10 @@ class RoutineBuilder extends _$RoutineBuilder {
     state = state.copyWith(alarms: updatedAlarms);
   }
 
+  void bulkUpdateAlarmDurations(int durationSeconds) {
+    state = state.updateAllAlarmDurations(durationSeconds);
+  }
+
   void updateAlarmDuration(String id, int durationSeconds) {
     final updatedAlarms = state.alarms.map((alarm) {
       if (alarm.id == id) {

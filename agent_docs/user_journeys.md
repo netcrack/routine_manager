@@ -22,7 +22,7 @@ These rules serve as the definitive guardrail for defining and evolving user jou
 ## Journey 1: Managing Routines (Create, List, Update)
 
 This journey covers the creation and modification of routines before execution.
-**Fulfills:** `INT-01`, `INT-02`, `INT-04`, `INT-10`
+**Fulfills:** `INT-01`, `INT-02`, `INT-04`, `INT-10`, `INT-14`
 
 1.  **Routine List Screen (Home)**
     *   **Trigger:** User launches the app.
@@ -39,6 +39,7 @@ This journey covers the creation and modification of routines before execution.
     *   **Action (INT-01 Check):** User enters a unique Routine name.
     *   **Action (INT-02 Check):** User adds one or multiple Alarms. For each, they scroll a duration picker (e.g., minutes/seconds).
     *   **Action (INT-04 Check):** User drags and drops the Alarms in the list to reorder them before saving.
+    *   **Action (INT-14 Check):** User sets a global duration applied to all current alarms in the list simultaneously.
     *   **Action (INT-10 Check):** User taps "Save".
 
     **System Flow:**

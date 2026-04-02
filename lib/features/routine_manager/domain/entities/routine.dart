@@ -36,4 +36,17 @@ class Routine extends Equatable {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+
+  /// Bulk updates all alarms in this routine to the specified duration.
+  /// // Fulfills INT-14
+  Routine updateAllAlarmDurations(int durationSeconds) {
+    final updatedAlarms = alarms.map((alarm) {
+      return alarm.copyWith(durationSeconds: durationSeconds);
+    }).toList();
+
+    return copyWith(
+      alarms: updatedAlarms,
+      updatedAt: DateTime.now(),
+    );
+  }
 }

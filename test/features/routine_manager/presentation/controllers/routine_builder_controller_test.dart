@@ -60,6 +60,17 @@ void main() {
       expect(state.alarms.first.orderIndex, 0);
     });
 
+    test('bulkUpdateAlarmDurations should update all alarms in state // Verifies INT-14', () {
+      final notifier = container.read(routineBuilderProvider().notifier);
+      notifier.addAlarm(60);
+      notifier.addAlarm(120);
+      
+      notifier.bulkUpdateAlarmDurations(300);
+      
+      final state = container.read(routineBuilderProvider());
+      expect(state.alarms.every((a) => a.durationSeconds == 300), isTrue);
+    });
+
     test('reorderAlarms should correctly swap positions', () {
       final notifier = container.read(routineBuilderProvider().notifier);
       notifier.addAlarm(60); // Alarm 0

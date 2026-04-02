@@ -1,6 +1,6 @@
 # Tasks for Journey 1: Managing Routines (Create, List, Update)
 
-**Fulfills:** `INT-01`, `INT-02`, `INT-04`, `INT-10`
+**Fulfills:** `INT-01`, `INT-02`, `INT-04`, `INT-10`, `INT-14`
 **Reference:** `agent_docs/user_journeys.md`, `agent_docs/intents.md`, `agent_docs/core_standards.md`
 
 This document breaks down Journey 1 into actionable development tasks following the Feature-First Clean Architecture standards.
@@ -48,6 +48,12 @@ This document breaks down Journey 1 into actionable development tasks following 
     - `SaveRoutineUseCase`: Enforces `alarms.isNotEmpty` and returns `Result.failure(DomainError.validationFailed)` if invalid.
     - `GetRoutinesUseCase`: Returns `Result.success(List<Routine>)` or `Result.failure` on storage errors.
   - **Verification:** 100% test coverage verifying both `success` and `failure` Result paths.
+
+- [x] **Task 1.5: Add Bulk Duration Update Logic**
+  - **Path:** `lib/features/routine_manager/domain/entities/routine.dart`
+  - **Description:** Implement a method (or helper) to create a copy of the routine with all alarms set to a uniform duration.
+  - **Intent:** `// Fulfills INT-14`
+  - **Verification:** Unit test confirming all alarms in the returned routine have the same duration.
 
 ---
 
@@ -100,3 +106,10 @@ This document breaks down Journey 1 into actionable development tasks following 
   - **Description:**
     - **Empty Routine Prevention:** Handle `DomainError.validationFailed` in UI (disable save or show error highlight).
     - **Storage Failure Response:** Display a **standard notification** ("Failed to save routine") if the UseCase returns `DomainError.storageFailure`.
+
+- [x] **Task 3.5: Implement Bulk Duration Update UI**
+  - **Path:** `lib/features/routine_manager/presentation/screens/routine_builder_screen.dart`
+  - **Description:** 
+    - Add a "Set all durations" action/button in the Routine Builder.
+    - Implement the controller logic to trigger the bulk update across all current alarms in the builder state.
+  - **Intent:** `// Fulfills INT-14`

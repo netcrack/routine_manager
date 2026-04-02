@@ -43,6 +43,13 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
         title: Text(widget.initialRoutine == null ? 'Create Routine' : 'Edit Routine'),
         actions: [
           IconButton(
+            tooltip: 'Set All Durations',
+            icon: const Icon(Icons.timer_outlined),
+            onPressed: routine.alarms.isEmpty
+                ? null
+                : () => _showBulkDurationPicker(context, controller),
+          ),
+          IconButton(
             icon: const Icon(Icons.check),
             onPressed: routine.alarms.isEmpty || _nameController.text.isEmpty
                 ? null
@@ -135,6 +142,63 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _showBulkDurationPicker(
+    BuildContext context,
+    RoutineBuilder controller,
+  ) async {
+    int minutes = 1;
+    int seconds = 0;
+
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Set All Alarm Durations'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Apply this duration to all alarms:'),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildPicker(
+                  label: 'Min',
+                  value: minutes,
+                  onChanged: (val) => minutes = val,
+                ),
+                const SizedBox(width: 24),
+                _buildPicker(
+                  label: 'Sec',
+                  value: seconds,
+                  onChanged: (val) => seconds = val,
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final totalSeconds = (minutes * 60) + seconds;
+              if (totalSeconds > 0) {
+                Navigator.pop(context, totalSeconds);
+              }
+            },
+            child: const Text('Apply to All'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result > 0) {
+      controller.bulkUpdateAlarmDurations(result);
+    }
   }
 
   Future<void> _showAlarmDurationPicker(

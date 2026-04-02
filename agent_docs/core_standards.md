@@ -61,7 +61,7 @@ Compliance with these roles ensures architectural integrity across the Feature-F
 The AI must use these exact schemas derived directly from `intents.md`.
 
 ### 2.1. Entity: `Routine`
-Satisfies: `INT-01`, `INT-04`, `INT-10`
+Satisfies: `INT-01`, `INT-04`, `INT-10`, `INT-14`
 *   `id`: `String` (UUID)
 *   `name`: `String` (Must be unique across all routines)
 *   `alarms`: `List<Alarm>` (Must contain at least 1)
