@@ -7,9 +7,12 @@ part of 'active_session_controller.dart';
 // **************************************************************************
 
 String _$activeSessionControllerHash() =>
-    r'bf9cc8560762ea8b62b946adc27d176c9d668e2d';
+    r'67342d316f69fb219cc6b1e0f4dddfd03b549ec9';
 
-/// See also [ActiveSessionController].
+/// Active Session Controller - Central state holder for the running routine session.
+/// // Fulfills INT-03, INT-05, INT-06, INT-09, INT-11
+///
+/// Copied from [ActiveSessionController].
 @ProviderFor(ActiveSessionController)
 final activeSessionControllerProvider =
     NotifierProvider<ActiveSessionController, ActiveSession>.internal(

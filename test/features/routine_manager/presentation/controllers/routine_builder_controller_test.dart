@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:routine_manager/core/result.dart';
 import 'package:routine_manager/features/routine_manager/domain/entities/routine.dart';
 import 'package:routine_manager/features/routine_manager/domain/repositories/routine_repository.dart';
 import 'package:routine_manager/features/routine_manager/presentation/controllers/routine_builder_controller.dart';
@@ -18,6 +19,16 @@ void main() {
         overrides: [
           routineRepositoryProvider.overrideWithValue(mockRepository),
         ],
+      );
+
+      registerFallbackValue(
+        Routine(
+          id: '1',
+          name: 'test',
+          alarms: const [],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
       );
     });
 
@@ -63,24 +74,17 @@ void main() {
       expect(state.alarms[1].orderIndex, 1);
     });
 
-    test('save should call the save use case', () async {
-      registerFallbackValue(
-        Routine(
-          id: '1',
-          name: 'test',
-          alarms: const [],
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      when(() => mockRepository.saveRoutine(any())).thenAnswer((_) async => {});
+    test('save should call the save use case and return success', () async {
+      when(() => mockRepository.saveRoutine(any()))
+          .thenAnswer((_) async => const Result.success(null));
 
       final notifier = container.read(routineBuilderProvider().notifier);
       notifier.updateName('Morning');
       notifier.addAlarm(60);
       
-      await notifier.save();
+      final result = await notifier.save();
       
+      expect(result.isSuccess, isTrue);
       verify(() => mockRepository.saveRoutine(any())).called(1);
     });
   });

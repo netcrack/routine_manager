@@ -6,6 +6,19 @@ These mapped journeys serve as the bridge between the exact business rules (`int
 
 ---
 
+## 0. Meta-Rules: User Journey Mapping & Validation
+These rules serve as the definitive guardrail for defining and evolving user journeys. They ensure that all system interactions are logically derived from business intents and provide a clear blueprint for UI implementation and system flow synchronization.
+
+1. **Intent-Anchored Design**: Every user journey MUST explicitly map to one or more system intents (`INT-XX`). No journey step should exist without a supporting intent.
+2. **User-System Synchronicity**: Each step MUST be decomposed into a user-facing interaction (Trigger/Action) and a corresponding internal system operation (System Flow). 
+3. **Atomic Journey Outcomes**: Every journey MUST lead to a deterministic "Result" that verifies the completion of the involved intents’ success criteria.
+4. **Resilient Lifecycle Mapping**: Journeys MUST explicitly account for system state persistence and recovery across all lifecycle phases (Background, Interruption, and Termination).
+5. **Negative Path Coverage**: Journeys MUST define "Unhappy Paths" (Edge Cases, Permissions, Failures) as first-class citizens to ensure graceful degradation and error handling.
+6. **Logical Flow Integrity**: Transitions between journey steps MUST be based on valid domain state changes, ensuring no illegal or impossible user flows.
+7. **Baseline Stability**: Section 0 MUST be preserved across all project iterations to maintain the integrity of the intent-driven journey methodology.
+
+---
+
 ## Journey 1: Managing Routines (Create, List, Update)
 
 This journey covers the creation and modification of routines before execution.
@@ -14,6 +27,11 @@ This journey covers the creation and modification of routines before execution.
 1.  **Routine List Screen (Home)**
     *   **Trigger:** User launches the app.
     *   **Action (INT-01 Check):** User sees an empty state or a list of saved routines. User taps the `+` FAB to create a new routine.
+
+    **System Flow:**
+    * Fetch all persisted Routine entities from storage (INT-01)
+    * Monitor for real-time routine updates/deletions
+
     *   *Result:* Navigates to the Routine Builder Screen.
 
 2.  **Routine Builder Screen (Creation & Edit)**
@@ -22,6 +40,13 @@ This journey covers the creation and modification of routines before execution.
     *   **Action (INT-02 Check):** User adds one or multiple Alarms. For each, they scroll a duration picker (e.g., minutes/seconds).
     *   **Action (INT-04 Check):** User drags and drops the Alarms in the list to reorder them before saving.
     *   **Action (INT-10 Check):** User taps "Save".
+
+    **System Flow:**
+    * Validate unique routine name and minimum alarm count (INT-01)
+    * Sequence alarms by user-defined order (INT-04)
+    * Persist Routine entity to primary storage (INT-10)
+    * Broadcast updated routine listing state
+
     *   *Result:* The routine is validated and persisted via Hive. Returns to the Routine List Screen where the new routine is visible.
 
 ---
@@ -33,32 +58,68 @@ This journey covers the active session state management constraint (`INT-09`).
 
 1.  **Routine List Screen -> Active Session**
     *   **Trigger:** User views a saved routine and taps "Start / Play".
-    *   **Action (INT-09 Enforcement):** If a routine is already running, starting a new one is disabled or triggers a blocker dialog.
+    *   **Action (INT-09 Enforcement):** If a routine is already running, starting a new one is disabled.
+    *   **Safety Constraints:** The "Delete" action is disabled for the active routine to prevent session corruption. "Delete" remains enabled for all other routines.
+
+    **System Flow:**
+    * Check ActiveSession lock (INT-09)
+    * Instantiate ActiveSession with Routine copy
+    * Schedule background notifications for alarm durations (INT-07)
+    * Persist session state for integrity/recovery
+    * Start first alarm countdown timer (INT-03)
+
     *   *Result:* Navigates to the Active Session Screen. The first Alarm begins counting down immediately (`INT-03`).
 
 2.  **Active Session Screen (Running State)**
     *   **Trigger:** The active alarm timer is visually ticking down.
     *   **Action (INT-06 Check):** User taps "Pause". The timer halts. User taps "Resume" to continue.
-    *   **Action (INT-05 Check):** At any time, User taps "Stop". A confirmation dialog appears. If confirmed, the session is destroyed, returning to the Home Screen.
+
+    **System Flow:**
+    * **Pause:** Halt active timer and update session state to "Paused" (INT-06). Calculate remaining duration and cancel pending notifications (INT-07).
+    * **Stop:** Purge active timer, cancel all notifications (INT-07), stop ringing audio (INT-08), and release ActiveSession lock (INT-09/INT-05).
 
 3.  **Active Session Screen (Ringing State)**
     *   **Trigger:** The countdown reaches 0 duration.
-    *   **Action (INT-07 & INT-08 Check):** A system notification fires with persistent looping audio (native "Ringing" state). Meanwhile, the screen shows a high-priority "pulsing" UI to alert the user visually.
-    *   **Action (INT-03 Check):** User taps "Stop Alarm / Next". The ringing stops. The current alarm is marked done, and the next sequential alarm automatically enters the "Running State".
+
+    **System Flow:**
+    * **Trigger:** Transition session state to "Ringing", fire system notification (INT-07), and activate persistent audio (INT-08).
+    * **Next (INT-03/INT-11):** Terminate audio (INT-08), finalize current alarm. 
+        * *If not last alarm:* Action button transitions to **"Next Alarm"**, selecting next sequential alarm on tap (INT-03).
+        * *If last alarm:* Action button transitions to **"Finish Routine"**, initiating completion sequence on tap (INT-11).
 
 4.  **Active Session (Background & Termination)**
     *   **Trigger:** User minimizes the app or force-closes it during the "Running State".
     *   **Action (INT-07 Check):** The system-level scheduled notification remains active.
+
+    **System Flow:**
+    * OS-level alarm manager/scheduler triggers notification independently of app process lifecycle (INT-07).
+
     *   *Result:* When the duration is reached, the system notification fires even if the app process is dead.
 
 5.  **Active Session (App Resume & Recovery)**
-    *   **Trigger:** User taps the notification or manually relaunches the app after the alarm duration has passed.
+    *   **Trigger:** User taps the notification (INT-12) or manually relaunches the app after the alarm duration has passed.
     *   **Action (State Recovery Check):** The app reads the persisted `ActiveSession` and calculates that the alarm is overdue.
-    *   *Result:* The app immediately enters the "Ringing State" UI (`INT-08`), allowing the user to proceed to the next alarm.
+
+    **System Flow:**
+    * Retrieve ActiveSession from persistence
+    * **Notification Hook (INT-12):** Catch notification tap event and trigger navigation to Active Session Screen.
+    * Evaluate current time vs. session start/pause timestamps
+    * Re-calculate remaining duration or trigger overdue alarm
+    * Sync system state with recovery data
+
+    *   *Result:* The app immediately enters the "Ringing State" UI (`INT-08`) on the session screen, allowing the user to proceed to the next alarm or finish the routine.
 
 6.  **Active Session Screen (Completion)**
-    *   **Trigger:** The final alarm in the sequence reaches 0 duration and is stopped by the User.
-    *   **Action (INT-11 Check):** The active session transitions to a "Completed" state. A success message is shown locally atomically, and the active session lock `INT-09` is cleared. User returns to the Routine List Screen.
+    *   **Trigger:** The final alarm in the sequence reaches 0 duration and the user taps "Finish Routine".
+    *   **Action (INT-11 Check):** Clicking "Finish Routine" on the final alarm is a terminal action. The user is returned to the Home Screen **immediately** while a success notification is shown. The session state transitions directly to **inactive** (clearing the ActiveSession lock `INT-09`).
+
+    **System Flow:**
+    * Verify final alarm termination (INT-11)
+    * Purge ActiveSession persistence and release session lock (INT-09)
+    * Record routine completion outcome and reset system state to **inactive**
+    * Broadcast session completion confirmation
+
+    *   *Result:* The session record is cleared, and the user is redirected to the Home Screen with a **success notification**.
 
 ---
 
@@ -69,14 +130,26 @@ This journey explicitly defines error states to prevent the AI from generating u
 1.  **Missing Permissions (Notification / Audio)**
     *   **Trigger:** User attempts to tap "Start / Play" on a routine.
     *   **Action:** System checks for required Notification / Background Execution permissions.
-    *   *Result:* If denied, the routine is blocked from starting (`INT-09` remains inactive). A persistent "Permissions Required" banner or dialog explains that accurate alarms cannot function.
+
+    **System Flow:**
+    * Validate permission status via native bridge. If denied, block `ActiveSession` instantiation (INT-09).
+
+    *   *Result:* The routine is blocked from starting. A persistent "Permissions Required" banner or dialog explain that accurate alarms cannot function.
 
 2.  **Storage Failure (Routine Creation)**
     *   **Trigger:** User taps "Save" on the Routine Builder Screen.
     *   **Action:** Hive encounters an IO error or quota limit.
-    *   *Result:* The UI remains on the Builder Screen. A standard snackbar is displayed: "Failed to save routine," ensuring the user's configuration is not lost (`INT-01` validation fail).
+
+    **System Flow:**
+    * Catch persistence exceptions and map to `storageFailure` domain error. Prevent UI transition to List Screen (INT-01/INT-10).
+
+    *   *Result:* The UI remains on the Builder Screen. A standard **error notification** is displayed: "Failed to save routine," ensuring the user's configuration is not lost.
 
 3.  **Empty Routine Prevention**
     *   **Trigger:** User taps "Save" with 0 alarms added.
-    *   **Action:** Domain logic enforces the `size > 0` constraint.
-    *   *Result:* The "Save" button is disabled, or tapping it highlights the "Add Alarm" button with an error color (`INT-01` constraint).
+    *   **Action:** User attempts to persist an invalid invariant.
+
+    **System Flow:**
+    * Domain logic enforces `alarms.length > 0` constraint during validation phase (INT-01).
+
+    *   *Result:* The "Save" button is disabled, or tapping it highlights the "Add Alarm" button with an error color, preventing invalid routine creation.

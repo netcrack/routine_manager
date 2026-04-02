@@ -5,13 +5,15 @@ import '../controllers/active_session_controller.dart';
 import '../controllers/routine_list_controller.dart';
 import '../../domain/entities/active_session.dart';
 
+/// Active Session Screen - Primary execution interface for a running routine.
+/// // Fulfills INT-03, INT-05, INT-06, INT-11
 class ActiveSessionScreen extends ConsumerWidget {
   const ActiveSessionScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef title) {
-    final session = title.watch(activeSessionControllerProvider);
-    final routines = title.watch(routineListProvider).value ?? [];
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(activeSessionControllerProvider);
+    final routines = ref.watch(routineListProvider).value ?? [];
     
     // Inactive or missing data safety
     if (session.status == SessionStatus.inactive || session.routineId.isEmpty) {
@@ -103,27 +105,27 @@ class _SessionControls extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(activeSessionControllerProvider.notifier);
 
-    if (status == SessionStatus.completed) {
-      return ElevatedButton.icon(
-        onPressed: () {
-          controller.stopSession();
-          context.go('/');
-        },
-        icon: const Icon(Icons.check),
-        label: const Text('Finish Routine'),
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-        ),
-      );
-    }
 
     if (status == SessionStatus.ringing) {
+      final session = ref.watch(activeSessionControllerProvider);
+      final routines = ref.watch(routineListProvider).value ?? [];
+      final routine = routines.firstWhere((r) => r.id == session.routineId);
+      final isLastAlarm = session.activeAlarmIndex == routine.alarms.length - 1;
+      
       return Column(
         children: [
           ElevatedButton.icon(
-            onPressed: () => controller.nextAlarm(),
-            icon: const Icon(Icons.skip_next),
-            label: const Text('Next Alarm'),
+            onPressed: () async {
+              await controller.nextAlarm();
+              if (context.mounted && isLastAlarm) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Routine '${routine.name}' finished!")),
+                );
+                context.go('/');
+              }
+            },
+            icon: Icon(isLastAlarm ? Icons.check : Icons.skip_next),
+            label: Text(isLastAlarm ? 'Finish Routine' : 'Next Alarm'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
               foregroundColor: Theme.of(context).colorScheme.onError,

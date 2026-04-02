@@ -7,7 +7,7 @@ part of 'pause_session.dart';
 // **************************************************************************
 
 String _$pauseSessionUseCaseHash() =>
-    r'0185e94b2618919eefb8c078a75a85b6ae31cf69';
+    r'0af48715f5d084a255ea52e44633cc32a9acb269';
 
 /// See also [pauseSessionUseCase].
 @ProviderFor(pauseSessionUseCase)

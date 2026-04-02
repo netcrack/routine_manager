@@ -7,6 +7,20 @@ This document breaks down Journey 1 into actionable development tasks following 
 
 ---
 
+## Phase 0: Foundation (Core Standards)
+
+**Goal:** Establish the Result pattern and domain errors for deterministic use case outcomes.
+
+- [x] **Task 0.1: Define `DomainError` Enum**
+  - **Path:** `lib/core/domain_error.dart`
+  - **Description:** Implement `validationFailed`, `storageFailure`, `notFound`, etc.
+
+- [x] **Task 0.2: Implement `Result` Pattern Class**
+  - **Path:** `lib/core/result.dart`
+  - **Description:** A generic `Result<S, F>` wrapper for standardizing success and failure returns.
+
+---
+
 ## Phase 1: Domain Layer (Core Logic & Interfaces)
 
 **Goal:** Establish pure Dart entities, repository interfaces, and use cases. No Flutter UI or Hive dependencies.
@@ -25,15 +39,15 @@ This document breaks down Journey 1 into actionable development tasks following 
 
 - [x] **Task 1.3: Define `RoutineRepository` Interface**
   - **Path:** `lib/features/routine_manager/domain/repositories/routine_repository.dart`
-  - **Description:** Define abstract methods: `saveRoutine(Routine)`, `getRoutine(String)`, `getAllRoutines()`, `deleteRoutine(String)`.
+  - **Description:** Define abstract methods: `saveRoutine`, `getRoutine`, `getAllRoutines`, `deleteRoutine` using `Future<Result<T, DomainError>>`.
   - **Intent:** `// Fulfills INT-01, INT-10`
 
 - [x] **Task 1.4: Implement Domain Use Cases**
   - **Paths:** `lib/features/routine_manager/domain/usecases/...`
   - **Description:** 
-    - `SaveRoutineUseCase`: Validates routine constraints before saving to repository.
-    - `GetRoutinesUseCase`: Retrieves the routines from repository.
-  - **Verification:** 100% test coverage using standard pure Dart `test`.
+    - `SaveRoutineUseCase`: Enforces `alarms.isNotEmpty` and returns `Result.failure(DomainError.validationFailed)` if invalid.
+    - `GetRoutinesUseCase`: Returns `Result.success(List<Routine>)` or `Result.failure` on storage errors.
+  - **Verification:** 100% test coverage verifying both `success` and `failure` Result paths.
 
 ---
 
@@ -47,8 +61,8 @@ This document breaks down Journey 1 into actionable development tasks following 
 
 - [x] **Task 2.2: Implement `RoutineRepositoryImpl`**
   - **Path:** `lib/features/routine_manager/data/repositories/routine_repository_impl.dart`
-  - **Description:** Implement the `RoutineRepository` utilizing Hive boxes. Ensure exceptions/errors on quota limits or I/O are handled.
-  - **Verification:** Mock Hive to verify data mapping between Models and Entities.
+  - **Description:** Implement the `RoutineRepository` using Hive. Wrap operations in try-catch to map Hive/IO errors to `DomainError.storageFailure`.
+  - **Verification:** Mock Hive to verify error mapping and data conversion.
 
 ---
 
@@ -59,20 +73,22 @@ This document breaks down Journey 1 into actionable development tasks following 
 - [x] **Task 3.1: Implement Riverpod Controllers/Providers**
   - **Paths:** `lib/features/routine_manager/presentation/controllers/...`
   - **Description:**
-    - `routine_list_provider`: Fetches and exposes `List<Routine>` state.
-    - `routine_builder_controller`: Manages transient form state (name input, alarm list modification, drag-and-drop reordering state).
+    - `routine_list_provider`: Folds `Result` into `AsyncValue` to handle loading/error states.
+    - `routine_builder_controller`: Returns `Result` from `save()` to let UI handle errors.
 
 - [x] **Task 3.2: Build Routine List Screen (Home)**
   - **Path:** `lib/features/routine_manager/presentation/screens/routine_list_screen.dart`
   - **Description:** 
     - Display an empty state if no routines exist.
     - Display list view of saved routines.
-    - Floating Action Button (FAB) to trigger navigation to Builder Screen.
-  - **Intent:** `// Fulfills INT-01`
+    - Floating Action Button (FAB) to trigger navigation to Builder Screen for creation.
+    - Enable tapping a routine card to navigate to the Builder Screen for editing.
+  - **Intent:** `// Fulfills INT-01, INT-10`
 
 - [x] **Task 3.3: Build Routine Builder Screen**
   - **Path:** `lib/features/routine_manager/presentation/screens/routine_builder_screen.dart`
   - **Description:**
+    - Initialize UI with existing routine data (name, alarms, durations) if editing.
     - Unique Routine Name text field.
     - Add/Edit Alarm component with duration picker (minutes/seconds).
     - ReorderableListView for dragging and dropping alarms to update `orderIndex`.
@@ -82,5 +98,5 @@ This document breaks down Journey 1 into actionable development tasks following 
 - [x] **Task 3.4: Implement Unhappy Paths UI State**
   - **Path:** Handled in the Builder Screen / Controllers.
   - **Description:**
-    - **Empty Routine Prevention:** Disable the save button or show error styling if user tries to save 0 alarms (INT-01 constraint).
-    - **Storage Failure Response:** Display a standard Snackbar ("Failed to save routine") if the save operation throws an exception, keeping user on the builder screen.
+    - **Empty Routine Prevention:** Handle `DomainError.validationFailed` in UI (disable save or show error highlight).
+    - **Storage Failure Response:** Display a **standard notification** ("Failed to save routine") if the UseCase returns `DomainError.storageFailure`.

@@ -6,7 +6,7 @@ part of 'next_alarm.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$nextAlarmUseCaseHash() => r'e0cf872242d543fed0bf116e266f3e53480eb823';
+String _$nextAlarmUseCaseHash() => r'e4abd737c0337792208121353e591fc2c1af13b0';
 
 /// See also [nextAlarmUseCase].
 @ProviderFor(nextAlarmUseCase)

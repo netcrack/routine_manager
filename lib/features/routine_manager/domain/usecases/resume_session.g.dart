@@ -7,7 +7,7 @@ part of 'resume_session.dart';
 // **************************************************************************
 
 String _$resumeSessionUseCaseHash() =>
-    r'b0d3b271de4a2b6905eb4dce2a27cd847d6b28ae';
+    r'5299ba1a27c10ce63fc2c82ca448d420ace31fd9';
 
 /// See also [resumeSessionUseCase].
 @ProviderFor(resumeSessionUseCase)

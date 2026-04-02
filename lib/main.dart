@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'core/di/service_providers.dart';
+import 'core/di/notification_click_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/services/local_notification_service_impl.dart';
 import 'features/routine_manager/data/models/alarm_model.dart';
@@ -29,6 +30,10 @@ void main() async {
   final notificationService = LocalNotificationServiceImpl(plugin);
   await notificationService.init();
 
+  // Check if app was launched from a notification
+  final initialNotification = await plugin.getNotificationAppLaunchDetails();
+  final initialPayload = initialNotification?.notificationResponse?.payload;
+
   runApp(
     ProviderScope(
       overrides: [
@@ -36,18 +41,48 @@ void main() async {
         sessionRepositoryProvider.overrideWithValue(SessionRepositoryImpl(sessionBox)),
         notificationServiceProvider.overrideWithValue(notificationService),
       ],
-      child: const MyApp(),
+      child: MyApp(initialPayload: initialPayload),
     ),
   );
 }
 
-class MyApp extends ConsumerWidget {
-  const MyApp({super.key});
+class MyApp extends ConsumerStatefulWidget {
+  final String? initialPayload;
+  const MyApp({super.key, this.initialPayload});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Handle initial payload after first frame
+    if (widget.initialPayload != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _handleNavigation(widget.initialPayload);
+      });
+    }
+  }
+
+  void _handleNavigation(String? payload) {
+    // Currently we always land in /session for any relevant notification
+    // In future this can be parsed to handle deeper links
+    ref.read(appRouterProvider).push('/session');
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
-    
+
+    // Listen for runtime notification clicks
+    ref.listen(notificationClickProvider, (_, next) {
+      if (next.hasValue && next.value != null) {
+        _handleNavigation(next.value);
+      }
+    });
+
     return MaterialApp.router(
       title: 'Routine Manager',
       theme: ThemeData(

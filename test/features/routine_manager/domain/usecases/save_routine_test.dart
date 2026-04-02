@@ -1,5 +1,7 @@
+// Verifies INT-01, INT-10 (Standard 8.4)
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:routine_manager/core/result.dart';
 import 'package:routine_manager/features/routine_manager/domain/entities/alarm.dart';
 import 'package:routine_manager/features/routine_manager/domain/entities/routine.dart';
 import 'package:routine_manager/features/routine_manager/domain/repositories/routine_repository.dart';
@@ -30,9 +32,12 @@ void main() {
 
   group('SaveRoutineUseCase // Verifies INT-01, INT-10', () {
     test('should save routine to repository and update updatedAt', () async {
-      when(() => mockRepository.saveRoutine(any())).thenAnswer((_) async => {});
+      when(() => mockRepository.saveRoutine(any()))
+          .thenAnswer((_) async => const Result.success(null));
 
-      await useCase.execute(routine);
+      final result = await useCase.execute(routine);
+
+      expect(result.isSuccess, isTrue);
 
       final capturedRoutine = verify(() => mockRepository.saveRoutine(captureAny())).captured.single as Routine;
       

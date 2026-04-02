@@ -1,4 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/domain_error.dart';
+import '../../../../core/result.dart';
 import '../entities/routine.dart';
 import '../repositories/routine_repository.dart';
 
@@ -11,16 +13,16 @@ class SaveRoutineUseCase {
 
   SaveRoutineUseCase(this.repository);
 
-  Future<void> execute(Routine routine) async {
+  Future<Result<void, DomainError>> execute(Routine routine) async {
     // Business rule: Routines must have at least one alarm (Fulfills INT-01)
     if (routine.alarms.isEmpty) {
-      throw ArgumentError('A routine must have at least one alarm.');
+      return const Result.failure(DomainError.validationFailed);
     }
     
     // Update the routine's updatedAt timestamp
     final updatedRoutine = routine.copyWith(updatedAt: DateTime.now());
     
-    await repository.saveRoutine(updatedRoutine);
+    return await repository.saveRoutine(updatedRoutine);
   }
 }
 

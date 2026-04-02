@@ -7,7 +7,6 @@ enum SessionStatus {
   running,
   paused,
   ringing,
-  completed,
 }
 
 /// Active Session Entity - Represent the state of an ongoing routine execution.

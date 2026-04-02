@@ -10,16 +10,23 @@ part 'routine_list_controller.g.dart';
 @riverpod
 class RoutineList extends _$RoutineList {
   @override
-  Future<List<Routine>> build() {
+  Future<List<Routine>> build() async {
     final useCase = ref.watch(getRoutinesUseCaseProvider);
-    return useCase.execute();
+    final result = await useCase.execute();
+    return result.fold(
+      (routines) => routines,
+      (error) => throw Exception('Failed to fetch routines: $error'),
+    );
   }
 
   Future<void> deleteRoutine(String id) async {
     final repository = ref.read(routineRepositoryProvider);
-    await repository.deleteRoutine(id);
-    // Refresh the list after deletion
-    ref.invalidateSelf();
+    final result = await repository.deleteRoutine(id);
+    
+    result.when(
+      onSuccess: (_) => ref.invalidateSelf(),
+      onFailure: (error) => throw Exception('Failed to delete routine: $error'),
+    );
   }
 
   Future<void> refresh() async {

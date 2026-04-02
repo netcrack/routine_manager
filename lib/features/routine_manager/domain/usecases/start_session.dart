@@ -1,57 +1,71 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/di/service_providers.dart';
+import '../../../../core/domain_error.dart';
+import '../../../../core/result.dart';
 import '../entities/active_session.dart';
 import '../entities/routine.dart';
+import '../repositories/session_repository.dart';
 import '../services/notification_service.dart';
+import '../services/notification_strings.dart';
 
 part 'start_session.g.dart';
 
-/// Start Session Use Case - Pure Dart logic to initiate a routine execution.
-/// // Fulfills INT-03, INT-09
+/// Start Session Use Case - Enforces singleton execution and initiates routine sequence.
+/// // Fulfills INT-03, INT-09, Standard 4.2 (Atomicity), Standard 5.1 (Result Pattern)
 class StartSessionUseCase {
   final NotificationService notificationService;
+  final SessionRepository sessionRepository;
 
-  StartSessionUseCase({required this.notificationService});
+  StartSessionUseCase({
+    required this.notificationService,
+    required this.sessionRepository,
+  });
 
-  Future<ActiveSession> execute({
-    required Routine routine,
-    required ActiveSession currentSession,
-  }) async {
-    // 1. Enforce Singleton Execution (INT-09)
+  Future<Result<ActiveSession, DomainError>> execute(Routine routine) async {
+    // 1. Read: Load the current Persistence state (Standard 4.2)
+    final currentSession = await sessionRepository.loadSession();
+
+    // 2. Validate: Enforce Singleton Execution (INT-09, Standard 5.2)
     if (currentSession.status != SessionStatus.inactive) {
-      throw StateError('Cannot start a new session while another is active.');
+      return const Result.failure(DomainError.activeSessionExists);
     }
 
-    // 2. Permission Check (INT-09)
+    // 3. System Permission Validation (INT-09, Standard 5.2)
     var hasPermissions = await notificationService.checkPermissions();
     if (!hasPermissions) {
       hasPermissions = await notificationService.requestPermissions();
     }
     if (!hasPermissions) {
-      throw StateError('Notification permissions are required to start a session.');
+      return const Result.failure(DomainError.permissionDenied);
     }
 
-    // 3. Clear any old notifications
+    // 4. Apply: Clear state and transition to new session
     await notificationService.cancelAll();
-
-    // 4. Initial Active Session state
     final session = ActiveSession.initial(routine.id);
 
-    // 5. Schedule first alarm notification (INT-07)
+    // 5. Side Effect: Schedule first alarm notification (INT-07)
     final firstAlarm = routine.alarms[0];
     await notificationService.scheduleNotification(
       id: routine.id.hashCode ^ 0,
-      title: "Routine: ${routine.name}",
-      body: "First alarm is complete!",
+      title: NotificationStrings.routineTitle(routine.name),
+      body: NotificationStrings.alarmBody(0, routine.alarms.length),
       scheduledDate: DateTime.now().add(Duration(seconds: firstAlarm.durationSeconds)),
+      payload: 'active_session',
     );
 
-    return session;
+    // 6. Persist: Commit the final state to repository (Standard 4.2)
+    await sessionRepository.saveSession(session);
+
+    return Result.success(session);
   }
 }
 
 @riverpod
 StartSessionUseCase startSessionUseCase(StartSessionUseCaseRef ref) {
   final notificationService = ref.watch(notificationServiceProvider);
-  return StartSessionUseCase(notificationService: notificationService);
+  final sessionRepository = ref.watch(sessionRepositoryProvider);
+  return StartSessionUseCase(
+    notificationService: notificationService,
+    sessionRepository: sessionRepository,
+  );
 }

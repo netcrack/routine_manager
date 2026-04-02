@@ -1,18 +1,21 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/di/service_providers.dart';
 import '../../domain/entities/active_session.dart';
 import '../../domain/entities/routine.dart';
 import '../../domain/usecases/next_alarm.dart';
 import '../../domain/usecases/pause_session.dart';
+import '../../domain/usecases/process_heartbeat.dart';
 import '../../domain/usecases/resume_session.dart';
 import '../../domain/usecases/start_session.dart';
 import '../../domain/usecases/stop_session.dart';
-import '../../../../core/di/service_providers.dart';
 import 'routine_list_controller.dart';
 
 part 'active_session_controller.g.dart';
 
+/// Active Session Controller - Central state holder for the running routine session.
+/// // Fulfills INT-03, INT-05, INT-06, INT-09, INT-11
 @Riverpod(keepAlive: true)
 class ActiveSessionController extends _$ActiveSessionController {
   Timer? _timer;
@@ -42,66 +45,76 @@ class ActiveSessionController extends _$ActiveSessionController {
   Future<void> _loadPersistedState() async {
     final repo = ref.read(sessionRepositoryProvider);
     final savedSession = await repo.loadSession();
-    if (savedSession != null) {
-      state = savedSession;
-      if (state.status == SessionStatus.running) {
-        _recoverState();
-      }
+    state = savedSession;
+    if (state.status == SessionStatus.running) {
+      _recoverState();
     }
   }
 
   /// Start a routine session
-  /// // Fulfills INT-03, INT-09
+  /// // Fulfills INT-03, INT-09, Standard 5.1 & 5.3
   Future<void> startRoutine(Routine routine) async {
     final startUseCase = ref.read(startSessionUseCaseProvider);
     
-    try {
-      final session = await startUseCase.execute(
-        routine: routine,
-        currentSession: state,
-      );
-      
-      state = session;
-      await _saveState();
-      _startTimer();
-    } catch (e) {
-      // Handle permission errors or singleton violation
-      rethrow;
-    }
+    final result = await startUseCase.execute(routine);
+    
+    result.when(
+      onSuccess: (session) {
+        state = session;
+        _startTimer();
+      },
+      onFailure: (error) {
+        // Presentation layer handles the failure state
+      },
+    );
   }
 
   /// Stop current session permanently
-  /// // Fulfills INT-05
+  /// // Fulfills INT-05, Standard 5.3
   Future<void> stopSession() async {
     final stopUseCase = ref.read(stopSessionUseCaseProvider);
-    state = await stopUseCase.execute();
-    await ref.read(sessionRepositoryProvider).clearSession();
-    _timer?.cancel();
+    final result = await stopUseCase.execute();
+    
+    result.when(
+      onSuccess: (session) {
+        state = session;
+        _timer?.cancel();
+      },
+      onFailure: (error) {},
+    );
   }
 
   /// Pause the timer
   /// // Fulfills INT-06
   Future<void> pauseSession() async {
-    if (state.status != SessionStatus.running) return;
-    
     final pauseUseCase = ref.read(pauseSessionUseCaseProvider);
-    state = await pauseUseCase.execute(state);
-    await _saveState();
-    _timer?.cancel();
+    final result = await pauseUseCase.execute();
+    
+    result.when(
+      onSuccess: (session) {
+        state = session;
+        _timer?.cancel();
+      },
+      onFailure: (_) {},
+    );
   }
 
   /// Resume the timer
   /// // Fulfills INT-06
   Future<void> resumeSession() async {
-    if (state.status != SessionStatus.paused) return;
-
     final routine = _getCurrentRoutine();
     if (routine == null) return;
 
     final resumeUseCase = ref.read(resumeSessionUseCaseProvider);
-    state = await resumeUseCase.execute(routine: routine, currentSession: state);
-    await _saveState();
-    _startTimer();
+    final result = await resumeUseCase.execute(routine);
+    
+    result.when(
+      onSuccess: (session) {
+        state = session;
+        _startTimer();
+      },
+      onFailure: (_) {},
+    );
   }
 
   /// Move to the next alarm or finish
@@ -111,59 +124,50 @@ class ActiveSessionController extends _$ActiveSessionController {
     if (routine == null) return;
 
     final nextUseCase = ref.read(nextAlarmUseCaseProvider);
-    state = await nextUseCase.execute(routine: routine, currentSession: state);
-    await _saveState();
-
-    if (state.status == SessionStatus.running) {
-      _startTimer();
-    } else {
-      _timer?.cancel();
-    }
+    final result = await nextUseCase.execute(routine);
+    
+    result.when(
+      onSuccess: (session) {
+        state = session;
+        if (state.status == SessionStatus.running) {
+          _startTimer();
+        } else {
+          _timer?.cancel();
+        }
+      },
+      onFailure: (_) {},
+    );
   }
 
   void _startTimer() {
     _timer?.cancel();
-    // Use a faster tick to reduce UI update delay when crossing the second boundary
     _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       _tick();
     });
   }
 
   void _tick() async {
-    if (state.status != SessionStatus.running) return;
+    if (state.status != SessionStatus.running) {
+      _timer?.cancel();
+      return;
+    }
 
     final routine = _getCurrentRoutine();
     if (routine == null) return;
 
-    final currentAlarm = routine.alarms[state.activeAlarmIndex];
-    final startTime = state.startTime;
-    if (startTime == null) return;
+    final result = await ref.read(processHeartbeatUseCaseProvider).execute(routine);
 
-    final now = DateTime.now();
-    final realElapsedSinceStart = now.difference(startTime).inSeconds;
-    
-    // Only update state if at least 1 second has elapsed
-    if (realElapsedSinceStart < 1) return;
-    final totalElapsed = state.elapsedSeconds + realElapsedSinceStart;
-
-    if (totalElapsed >= currentAlarm.durationSeconds) {
-      // Alarm Finished! (INT-03)
-      _timer?.cancel();
-      
-      state = state.copyWith(
-        elapsedSeconds: currentAlarm.durationSeconds,
-        status: SessionStatus.ringing,
-      );
-      _saveState();
-    } else {
-      // Advance startTime by EXACTLY the number of seconds we added to preserve the fractional remainder
-      final newStartTime = startTime.add(Duration(seconds: realElapsedSinceStart));
-      state = state.copyWith(
-        elapsedSeconds: totalElapsed, 
-        startTime: newStartTime,
-      );
-      _saveState();
-    }
+    result.when(
+      onSuccess: (updatedSession) {
+        state = updatedSession;
+        if (state.status != SessionStatus.running) {
+          _timer?.cancel();
+        }
+      },
+      onFailure: (_) {
+         _timer?.cancel();
+      },
+    );
   }
 
   Routine? _getCurrentRoutine() {
@@ -175,39 +179,6 @@ class ActiveSessionController extends _$ActiveSessionController {
   /// // Fulfills INT-07, Core Standard 6.2
   void _recoverState() {
     if (state.status != SessionStatus.running) return;
-
-    final routine = _getCurrentRoutine();
-    if (routine == null) return;
-
-    final currentAlarm = routine.alarms[state.activeAlarmIndex];
-    final startTime = state.startTime;
-    if (startTime == null) return;
-
-    final now = DateTime.now();
-    final realElapsedSinceStart = now.difference(startTime).inSeconds;
-    final totalElapsed = state.elapsedSeconds + realElapsedSinceStart;
-
-    if (totalElapsed >= currentAlarm.durationSeconds) {
-      // Alarm Finished while in background!
-      _timer?.cancel();
-      state = state.copyWith(
-        elapsedSeconds: currentAlarm.durationSeconds,
-        status: SessionStatus.ringing,
-      );
-      _saveState();
-    } else {
-      // Still running, update the tick and preserve fractional remainder
-      final newStartTime = startTime.add(Duration(seconds: realElapsedSinceStart));
-      state = state.copyWith(
-        elapsedSeconds: totalElapsed, 
-        startTime: newStartTime,
-      );
-      _saveState();
-      _startTimer();
-    }
-  }
-
-  Future<void> _saveState() async {
-    await ref.read(sessionRepositoryProvider).saveSession(state);
+    _tick(); // Immediately trigger a heartbeat to sync state
   }
 }

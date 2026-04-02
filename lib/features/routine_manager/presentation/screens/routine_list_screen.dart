@@ -38,7 +38,7 @@ class RoutineListScreen extends ConsumerWidget {
                 name: routine.name,
                 alarmCount: routine.alarms.length,
                 isCurrent: isCurrent,
-                isDisabled: isOtherActive,
+                isOtherActive: isOtherActive,
                 onTap: () => context.push('/builder', extra: routine),
                 onPlay: () {
                   if (isCurrent) {
@@ -108,7 +108,7 @@ class _RoutineCard extends StatelessWidget {
   final String name;
   final int alarmCount;
   final bool isCurrent;
-  final bool isDisabled;
+  final bool isOtherActive;
   final VoidCallback onTap;
   final VoidCallback onPlay;
   final VoidCallback onDelete;
@@ -117,7 +117,7 @@ class _RoutineCard extends StatelessWidget {
     required this.name,
     required this.alarmCount,
     required this.isCurrent,
-    required this.isDisabled,
+    required this.isOtherActive,
     required this.onTap,
     required this.onPlay,
     required this.onDelete,
@@ -129,15 +129,15 @@ class _RoutineCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: isDisabled ? null : onTap,
-        child: Opacity(
-          opacity: isDisabled ? 0.5 : 1.0,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: isDisabled ? null : onPlay,
+        onTap: (isCurrent || isOtherActive) ? null : onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: isOtherActive ? null : onPlay,
+                child: Opacity(
+                  opacity: isOtherActive ? 0.5 : 1.0,
                   child: Container(
                     width: 48,
                     height: 48,
@@ -149,14 +149,19 @@ class _RoutineCard extends StatelessWidget {
                     ),
                     child: Icon(
                       isCurrent ? Icons.timer : Icons.play_arrow_rounded,
-                      color: isCurrent 
-                          ? Theme.of(context).colorScheme.onPrimary 
-                          : Theme.of(context).colorScheme.onPrimaryContainer,
+                      color: isOtherActive
+                          ? Theme.of(context).colorScheme.onSurfaceVariant
+                          : (isCurrent
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : Theme.of(context).colorScheme.onPrimaryContainer),
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Opacity(
+                  opacity: (isCurrent || isOtherActive) ? 0.6 : 1.0,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -174,33 +179,33 @@ class _RoutineCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: isDisabled ? null : () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Delete Routine?'),
-                        content: const Text('This action cannot be undone.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              onDelete();
-                              Navigator.pop(context);
-                            },
-                            child: const Text('Delete'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                onPressed: isCurrent ? null : () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Delete Routine?'),
+                      content: const Text('This action cannot be undone.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            onDelete();
+                            Navigator.pop(context);
+                          },
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ),
       ),

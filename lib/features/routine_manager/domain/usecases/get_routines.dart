@@ -1,4 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/domain_error.dart';
+import '../../../../core/result.dart';
 import '../entities/routine.dart';
 import '../repositories/routine_repository.dart';
 
@@ -11,7 +13,7 @@ class GetRoutinesUseCase {
 
   GetRoutinesUseCase(this.repository);
 
-  Future<List<Routine>> execute() async {
+  Future<Result<List<Routine>, DomainError>> execute() async {
     return await repository.getAllRoutines();
   }
 }

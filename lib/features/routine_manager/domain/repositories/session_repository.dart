@@ -1,14 +1,15 @@
 import '../entities/active_session.dart';
 
-/// Session Repository - Interface for persisting the active routine session state.
-/// // Fulfills INT-03, INT-05, INT-06, INT-11 (Persistence)
+/// Repository interface for persisting and retrieving the single active routine session.
+/// // Fulfills Core Standards Section 6.3, INT-09
 abstract class SessionRepository {
-  /// Save the current session state.
+  /// Load the current active session from persistence.
+  /// Returns a default inactive session if none exists.
+  Future<ActiveSession> loadSession();
+
+  /// Persist the active session state.
   Future<void> saveSession(ActiveSession session);
 
-  /// Load the persisted session state.
-  Future<ActiveSession?> loadSession();
-
-  /// Clear the persisted session.
+  /// Clear the active session and release the singleton lock.
   Future<void> clearSession();
 }

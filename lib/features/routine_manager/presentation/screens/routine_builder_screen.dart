@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../domain/entities/routine.dart';
+import '../../domain/entities/alarm.dart';
 import '../controllers/routine_builder_controller.dart';
 import '../widgets/alarm_item.dart';
 
@@ -104,6 +105,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
                         alarm: alarm,
                         index: index,
                         onRemove: () => controller.removeAlarm(alarm.id),
+                        onTap: () => _showAlarmDurationPicker(context, controller, existingAlarm: alarm),
                       );
                     },
                   ),
@@ -111,7 +113,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddAlarmDialog(context, controller),
+        onPressed: () => _showAlarmDurationPicker(context, controller),
         label: const Text('Add Alarm'),
         icon: const Icon(Icons.add_alarm_rounded),
       ),
@@ -135,14 +137,18 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
     );
   }
 
-  Future<void> _showAddAlarmDialog(BuildContext context, RoutineBuilder controller) async {
-    int minutes = 1;
-    int seconds = 0;
-
+  Future<void> _showAlarmDurationPicker(
+    BuildContext context, 
+    RoutineBuilder controller, {
+    Alarm? existingAlarm,
+  }) async {
+    int minutes = existingAlarm != null ? existingAlarm.durationSeconds ~/ 60 : 1;
+    int seconds = existingAlarm != null ? existingAlarm.durationSeconds % 60 : 0;
+ 
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add New Alarm'),
+        title: Text(existingAlarm == null ? 'Add New Alarm' : 'Edit Alarm Duration'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -175,11 +181,15 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
             onPressed: () {
               final totalSeconds = (minutes * 60) + seconds;
               if (totalSeconds > 0) {
-                controller.addAlarm(totalSeconds);
+                if (existingAlarm == null) {
+                  controller.addAlarm(totalSeconds);
+                } else {
+                  controller.updateAlarmDuration(existingAlarm.id, totalSeconds);
+                }
                 Navigator.pop(context);
               }
             },
-            child: const Text('Add'),
+            child: Text(existingAlarm == null ? 'Add' : 'Save'),
           ),
         ],
       ),

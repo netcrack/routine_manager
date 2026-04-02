@@ -7,7 +7,7 @@ part of 'start_session.dart';
 // **************************************************************************
 
 String _$startSessionUseCaseHash() =>
-    r'4bd1189d9c3d035e532da71d771af13347237f7a';
+    r'2bcdb353393b89f1d8c19ccf716937e5c60f3325';
 
 /// See also [startSessionUseCase].
 @ProviderFor(startSessionUseCase)

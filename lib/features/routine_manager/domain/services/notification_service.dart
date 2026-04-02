@@ -13,7 +13,11 @@ abstract class NotificationService {
     required String title,
     required String body,
     required DateTime scheduledDate,
+    String? payload,
   });
+
+  /// Stream emitting notification payloads when a user interacts with a notification.
+  Stream<String?> get onNotificationClick;
 
   /// Cancel all pending notifications.
   Future<void> cancelAll();

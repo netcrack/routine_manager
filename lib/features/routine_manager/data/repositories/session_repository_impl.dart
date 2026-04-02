@@ -18,9 +18,9 @@ class SessionRepositoryImpl implements SessionRepository {
   }
 
   @override
-  Future<ActiveSession?> loadSession() async {
+  Future<ActiveSession> loadSession() async {
     final model = _box.get(_sessionKey);
-    return model?.toEntity();
+    return model?.toEntity() ?? const ActiveSession();
   }
 
   @override

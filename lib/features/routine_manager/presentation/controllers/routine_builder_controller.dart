@@ -1,5 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/domain_error.dart';
+import '../../../../core/result.dart';
 import '../../domain/entities/alarm.dart';
 import '../../domain/entities/routine.dart';
 import '../../domain/usecases/save_routine.dart';
@@ -50,6 +52,17 @@ class RoutineBuilder extends _$RoutineBuilder {
     state = state.copyWith(alarms: updatedAlarms);
   }
 
+  void updateAlarmDuration(String id, int durationSeconds) {
+    final updatedAlarms = state.alarms.map((alarm) {
+      if (alarm.id == id) {
+        return alarm.copyWith(durationSeconds: durationSeconds);
+      }
+      return alarm;
+    }).toList();
+    
+    state = state.copyWith(alarms: updatedAlarms);
+  }
+
   void reorderAlarms(int oldIndex, int newIndex) {
     var alarms = List<Alarm>.from(state.alarms);
     if (oldIndex < newIndex) {
@@ -66,11 +79,15 @@ class RoutineBuilder extends _$RoutineBuilder {
     state = state.copyWith(alarms: alarms);
   }
 
-  Future<void> save() async {
+  Future<Result<void, DomainError>> save() async {
     final saveUseCase = ref.read(saveRoutineUseCaseProvider);
-    await saveUseCase.execute(state);
+    final result = await saveUseCase.execute(state);
     
-    // Invalidate the routine list to refresh it
-    ref.invalidate(routineListProvider);
+    if (result.isSuccess) {
+      // Invalidate the routine list to refresh it
+      ref.invalidate(routineListProvider);
+    }
+    
+    return result;
   }
 }

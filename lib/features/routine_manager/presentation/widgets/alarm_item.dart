@@ -6,12 +6,14 @@ import '../../domain/entities/alarm.dart';
 class AlarmItem extends StatelessWidget {
   final Alarm alarm;
   final VoidCallback onRemove;
+  final VoidCallback? onTap;
   final int index;
 
   const AlarmItem({
     super.key,
     required this.alarm,
     required this.onRemove,
+    this.onTap,
     required this.index,
   });
 
@@ -35,6 +37,7 @@ class AlarmItem extends StatelessWidget {
       ),
       onDismissed: (_) => onRemove(),
       child: ListTile(
+        onTap: onTap,
         leading: CircleAvatar(
           backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
           child: Text(

@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -12,8 +13,12 @@ import '../../features/routine_manager/domain/services/notification_service.dart
 /// // Fulfills INT-07, INT-09
 class LocalNotificationServiceImpl implements NotificationService {
   final FlutterLocalNotificationsPlugin _plugin;
+  final _onNotificationClickController = StreamController<String?>.broadcast();
 
   LocalNotificationServiceImpl(this._plugin);
+
+  @override
+  Stream<String?> get onNotificationClick => _onNotificationClickController.stream;
 
   /// Initialize the notification system.
   Future<void> init() async {
@@ -43,7 +48,7 @@ class LocalNotificationServiceImpl implements NotificationService {
     await _plugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (details) {
-        // Handle notification touch here if needed
+        _onNotificationClickController.add(details.payload);
       },
     );
   }
@@ -51,25 +56,29 @@ class LocalNotificationServiceImpl implements NotificationService {
   @override
   Future<bool> checkPermissions() async {
     if (Platform.isAndroid) {
-      final androidImplementation = _plugin.resolvePlatformSpecificImplementation<
+      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
-      return await androidImplementation?.areNotificationsEnabled() ?? false;
-    } else if (Platform.isIOS || Platform.isMacOS) {
-      // For iOS/macOS, if we can't definitively check without a separate package,
-      // it's safer to return false so that `requestPermissions()` is explicitly called.
-      // The native platform will simply return true without prompting if permissions
-      // are already granted.
-      return false;
+      
+      final notificationsEnabled = await androidPlugin?.areNotificationsEnabled() ?? false;
+      final canScheduleExact = await androidPlugin?.canScheduleExactNotifications() ?? true;
+      
+    return notificationsEnabled && canScheduleExact;
     }
-    return false;
+    
+    // Fallback for other platforms (iOS/macOS)
+    return true; 
   }
 
   @override
   Future<bool> requestPermissions() async {
     if (Platform.isAndroid) {
-      final androidImplementation = _plugin.resolvePlatformSpecificImplementation<
+      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
-      return await androidImplementation?.requestNotificationsPermission() ?? false;
+      
+      // For Android, we request standard notification permission.
+      // Note: Exact alarm permission usually requires an Intent to settings on Android 13+.
+      final granted = await androidPlugin?.requestNotificationsPermission() ?? false;
+      return granted;
     } else if (Platform.isIOS) {
       final iosImplementation = _plugin.resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin>();
@@ -96,6 +105,7 @@ class LocalNotificationServiceImpl implements NotificationService {
     required String title,
     required String body,
     required DateTime scheduledDate,
+    String? payload,
   }) async {
     final tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
     final androidScheduleMode = await _resolveAndroidScheduleMode();
@@ -108,6 +118,7 @@ class LocalNotificationServiceImpl implements NotificationService {
         body,
         tzDate,
         notificationDetails,
+        payload: payload,
         androidScheduleMode: androidScheduleMode,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
@@ -122,6 +133,7 @@ class LocalNotificationServiceImpl implements NotificationService {
           body,
           tzDate,
           notificationDetails,
+          payload: payload,
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
           uiLocalNotificationDateInterpretation:
               UILocalNotificationDateInterpretation.absoluteTime,
@@ -174,13 +186,16 @@ class LocalNotificationServiceImpl implements NotificationService {
       return AndroidScheduleMode.exactAllowWhileIdle;
     }
 
-    final androidImplementation = _plugin.resolvePlatformSpecificImplementation<
+    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
-    final canScheduleExact =
-        await androidImplementation?.canScheduleExactNotifications() ?? false;
+    
+    // Check if the user has granted the SCHEDULE_EXACT_ALARM permission.
+    // Note: We also have USE_EXACT_ALARM in the manifest now, which is auto-granted.
+    final canScheduleExact = await androidPlugin?.canScheduleExactNotifications() ?? false;
 
+    // Use alarmClock for the most reliable system-level triggering
     return canScheduleExact
-        ? AndroidScheduleMode.exactAllowWhileIdle
+        ? AndroidScheduleMode.alarmClock
         : AndroidScheduleMode.inexactAllowWhileIdle;
   }
 

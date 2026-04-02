@@ -17,7 +17,7 @@ This document breaks down Journey 2 into actionable development tasks following 
     - Create `enum SessionStatus { inactive, running, paused, ringing, completed }`.
     - Create `ActiveSession` entity with properties: `routineId` (String), `activeAlarmIndex` (int), `elapsedSeconds` (int), `status` (SessionStatus).
   - **Intent:** `// Fulfills INT-03, INT-06, INT-11`
-  - **Verification:** Pure Dart unit tests verifying proper object state updates.
+  - **Verification:** Pure Dart unit tests verifying proper object state updates. Every test file must start with a comment documenting which Intent (`// Verifies INT-XX`) it is testing (Standard 8.4).
 
 - [x] **Task 2.2: Define Native Notification Interface**
   - **Paths:** 
@@ -27,11 +27,13 @@ This document breaks down Journey 2 into actionable development tasks following 
 - [x] **Task 2.3: Implement Session Use Cases**
   - **Paths:** `lib/features/routine_manager/domain/usecases/...`
   - **Description:** Implement pure Dart logic rules avoiding `dart:async`'s `Timer` dependency inside UseCases.
+    - **Result Pattern:** All UseCase signatures must return a `Result` type (Standard 5.1) to avoid throwing raw exceptions.
+    - **Atomicity:** Follow the sequence: `Read (persistence) -> Validate (invariants) -> Apply (transition) -> Persist (result)` (Standard 4.2).
     - `StartSessionUseCase`: Asserts no other session is active (enforces `INT-09`), ensures required permissions are granted (or fails), and starts Alarm 0.
     - `PauseSessionUseCase` / `ResumeSessionUseCase`: Toggles active timer states (`INT-06`).
     - `StopSessionUseCase`: Permanently halts execution, resets session, clears remaining alarms (`INT-05`).
     - `NextAlarmUseCase`: Handles transitioning from `ringing` state on Alarm $N$ to `running` on Alarm $N+1$, or transitions to `completed` if last alarm (`INT-03`, `INT-11`).
-  - **Verification:** Comprehensive state machine transition testing. 100% test coverage matching rules in Section 4.3 of core standards.
+  - **Verification:** Comprehensive state machine transition testing. 100% test coverage matching rules in Section 8.1 of core standards. Every test file must start with a comment documenting which Intent (`// Verifies INT-XX`) it is testing (Standard 8.4).
 
 ---
 
@@ -60,6 +62,7 @@ This document breaks down Journey 2 into actionable development tasks following 
   - **Description:**
     - Central state holder for `ActiveSession`. Only 1 global provider to enforce the `INT-09` singleton rule.
     - Wire up internal ticking mechanisms (using Flutter/Riverpod safe context, handling AppLifecycleState for background/foreground sync).
+  - **Verification:** Standard 8.3 & 8.4. ProviderContainer tests must verify transitions with Intent documentation in comments.
 
 - [x] **Task 2.7: Update Routine List Screen to Start Sessions**
   - **Path:** `lib/features/routine_manager/presentation/screens/routine_list_screen.dart`
@@ -67,6 +70,8 @@ This document breaks down Journey 2 into actionable development tasks following 
     - Connect "Start/Play" button on routine tiles to `StartSessionUseCase`.
     - Handle Unhappy Path: Display persistent banner/dialog if missing Permissions (Notification/Audio) and abort start (`INT-09` lock unchanged).
     - Block or disable Start buttons for other routines if a session is actively running or paused elsewhere.
+    - Disable the "Delete" button for the active routine to prevent accidental session termination/corruption.
+    - Ensure inactive routines' "Delete" buttons remain enabled regardless of whether another routine is active.
 
 - [x] **Task 2.8: Build Active Session Screen (Running & Paused State)**
   - **Path:** `lib/features/routine_manager/presentation/screens/active_session_screen.dart`
@@ -78,8 +83,11 @@ This document breaks down Journey 2 into actionable development tasks following 
 - [x] **Task 2.9: Build Ringing & Completed State UI**
   - **Path:** In `active_session_screen.dart` or as independent overlay dialogues/widgets depending on app route structure.
   - **Description:**
-    - **Ringing:** Pulsing UI animation, flashing colors indicating due state. "Stop Alarm / Next" button stops continuous alarm and audio service (`INT-03`).
-    - **Completed:** When `NextAlarmUseCase` returns `completed`, display an atomic success message locally and pop the navigation stack returning to Routine List Screen (`INT-11`).
+    - **Ringing:** Pulsing UI animation, flashing colors indicating due state.
+    - **Dynamic Button:** The stop/next action button must dynamically update its label based on whether the current alarm is the final entry in the routine sequence:
+        - If `session.activeAlarmIndex < routine.alarms.length - 1`: Label "**Next Alarm**" (calls `nextAlarm()`).
+        - If `session.activeAlarmIndex == routine.alarms.length - 1`: Label "**Finish Routine**". On tap: Call `nextAlarm()`, show a **Success Notification** ("Routine 'X' finished!"), and navigate home immediately.
+  - **Verification:** Manual UI audit against User Journey 2.3 and 2.6 outcome criteria.
 
 ---
 
@@ -100,11 +108,14 @@ This document breaks down Journey 2 into actionable development tasks following 
     - Modify use cases to calculate the target end-time and call `notificationService.scheduleNotification()` immediately upon alarm start.
     - Ensure `startTime` is set to `DateTime.now()` (or the resume time).
 
-- [x] **Task 2.12: Refactor `ActiveSessionController` for Robust Recovery**
-  - **Path:** `lib/features/routine_manager/presentation/controllers/active_session_controller.dart`
+- [ ] **Task 2.13: Implement Notification-Triggered Navigation (Stream + Router)**
+  - **Path:** `lib/core/services/local_notification_service_impl.dart`, `lib/main.dart`
   - **Description:** 
-    - Replace `elapsedSeconds++` logic with `now.difference(startTime)` calculation to ensure accuracy after backgrounding.
-    - Implement a `_recoverState()` method called on initialization and `AppLifecycleState.resumed` to transition to `ringing` if the current time exceeds the target end-time.
-    - Ensure `ActiveSession` state is persisted to Hive on every change.
-  - **Intent:** `// Fulfills INT-07, Core Standard 6.2`
+    - Update `NotificationService` to expose a `Stream<String?> onNotificationClick`.
+    - Implement the stream in `LocalNotificationServiceImpl` and update `init()` to pipe native notification responses.
+    - Create `notification_click_provider.dart` to expose the stream via Riverpod.
+    - Update `MyApp` (`main.dart`) to listen to the provider and call `router.push('/session')` when an event is received.
+    - Handle `getNotificationAppLaunchDetails()` for cold start navigation.
+  - **Intent:** `// Fulfills INT-12`
+  - **Verification:** Standard 8.3 & 8.4 verification. Manual check for background-to-foreground and killed-to-foreground navigation.
 
