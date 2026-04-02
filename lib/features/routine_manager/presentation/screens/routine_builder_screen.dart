@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../domain/entities/routine.dart';
 import '../../domain/entities/alarm.dart';
 import '../controllers/routine_builder_controller.dart';
 import '../widgets/alarm_item.dart';
+import '../../../../core/theme/app_theme.dart';
 
 /// Routine Builder Screen - Screen for creating or editing a routine.
 /// // Fulfills INT-01, INT-02, INT-04, INT-10
@@ -40,65 +42,100 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.initialRoutine == null ? 'Create Routine' : 'Edit Routine'),
+        title: Text(
+          widget.initialRoutine == null ? 'Create' : 'Edit',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
             tooltip: 'Set All Durations',
-            icon: const Icon(Icons.timer_outlined),
+            icon: const Icon(Icons.auto_awesome_rounded),
             onPressed: routine.alarms.isEmpty
                 ? null
-                : () => _showBulkDurationPicker(context, controller),
+                : () => _showBulkDurationSheet(context, controller),
           ),
-          IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: routine.alarms.isEmpty || _nameController.text.isEmpty
-                ? null
-                : () async {
-                    try {
-                      await controller.save();
-                      if (context.mounted) context.pop();
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Failed to save routine: $e')),
-                        );
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: TextButton.icon(
+              onPressed: routine.alarms.isEmpty || _nameController.text.isEmpty
+                  ? null
+                  : () async {
+                      try {
+                        await controller.save();
+                        if (context.mounted) context.pop();
+                      } catch (e) {
+                        if (context.mounted) {
+                          AppTheme.showPremiumSnackBar(
+                            context,
+                            'Failed to save routine: $e',
+                            isError: true,
+                          );
+                        }
                       }
-                    }
-                  },
+                    },
+              icon: const Icon(Icons.done_all_rounded),
+              label: const Text('Save'),
+              style: TextButton.styleFrom(
+                backgroundColor: routine.alarms.isEmpty || _nameController.text.isEmpty
+                    ? null
+                    : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              ),
+            ),
           ),
         ],
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
             child: TextField(
               controller: _nameController,
+              style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
               decoration: const InputDecoration(
-                labelText: 'Routine Name',
-                hintText: 'e.g. Morning Yoga',
-                border: OutlineInputBorder(),
+                hintText: 'Routine Name',
+                border: InputBorder.none,
+                hintStyle: TextStyle(color: Colors.grey),
               ),
               onChanged: (val) => controller.updateName(val),
             ),
           ),
-          const Divider(),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Alarms',
-                  style: Theme.of(context).textTheme.titleLarge,
+                Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Session Tasks',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                    ),
+                  ],
                 ),
                 Text(
                   '${routine.alarms.length} items',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 8),
           Expanded(
             child: routine.alarms.isEmpty
                 ? _buildEmptyAlarmsState(context)
@@ -112,7 +149,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
                         alarm: alarm,
                         index: index,
                         onRemove: () => controller.removeAlarm(alarm.id),
-                        onTap: () => _showAlarmDurationPicker(context, controller, existingAlarm: alarm),
+                        onTap: () => _showAlarmDurationSheet(context, controller, existingAlarm: alarm),
                       );
                     },
                   ),
@@ -120,79 +157,51 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAlarmDurationPicker(context, controller),
-        label: const Text('Add Alarm'),
-        icon: const Icon(Icons.add_alarm_rounded),
+        onPressed: () => _showAlarmDurationSheet(context, controller),
+        label: const Text('Add Task'),
+        icon: const Icon(Icons.add_task_rounded),
+        elevation: 4,
       ),
     );
   }
 
   Widget _buildEmptyAlarmsState(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.add_alarm_rounded,
-            size: 64,
-            color: Theme.of(context).colorScheme.primaryContainer,
-          ),
-          const SizedBox(height: 16),
-          const Text('At least one alarm is required.'),
-        ],
+      child: Opacity(
+        opacity: 0.5,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.playlist_add_rounded,
+                size: 64,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Start by adding your first task'),
+          ],
+        ),
       ),
     );
   }
 
-  Future<void> _showBulkDurationPicker(
+  Future<void> _showBulkDurationSheet(
     BuildContext context,
     RoutineBuilder controller,
   ) async {
-    int minutes = 1;
-    int seconds = 0;
-
-    final result = await showDialog<int>(
+    final result = await showModalBottomSheet<int>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Set All Alarm Durations'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Apply this duration to all alarms:'),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildPicker(
-                  label: 'Min',
-                  value: minutes,
-                  onChanged: (val) => minutes = val,
-                ),
-                const SizedBox(width: 24),
-                _buildPicker(
-                  label: 'Sec',
-                  value: seconds,
-                  onChanged: (val) => seconds = val,
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              final totalSeconds = (minutes * 60) + seconds;
-              if (totalSeconds > 0) {
-                Navigator.pop(context, totalSeconds);
-              }
-            },
-            child: const Text('Apply to All'),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _DurationPickerSheet(
+        title: 'Set All Durations',
+        confirmLabel: 'Apply to All',
       ),
     );
 
@@ -201,105 +210,237 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
     }
   }
 
-  Future<void> _showAlarmDurationPicker(
-    BuildContext context, 
+  Future<void> _showAlarmDurationSheet(
+    BuildContext context,
     RoutineBuilder controller, {
     Alarm? existingAlarm,
   }) async {
-    int minutes = existingAlarm != null ? existingAlarm.durationSeconds ~/ 60 : 1;
-    int seconds = existingAlarm != null ? existingAlarm.durationSeconds % 60 : 0;
- 
-    return showDialog(
+    final result = await showModalBottomSheet<int>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(existingAlarm == null ? 'Add New Alarm' : 'Edit Alarm Duration'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Select Duration:'),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildPicker(
-                  label: 'Min',
-                  value: minutes,
-                  onChanged: (val) => minutes = val,
-                ),
-                const SizedBox(width: 24),
-                _buildPicker(
-                  label: 'Sec',
-                  value: seconds,
-                  onChanged: (val) => seconds = val,
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              final totalSeconds = (minutes * 60) + seconds;
-              if (totalSeconds > 0) {
-                if (existingAlarm == null) {
-                  controller.addAlarm(totalSeconds);
-                } else {
-                  controller.updateAlarmDuration(existingAlarm.id, totalSeconds);
-                }
-                Navigator.pop(context);
-              }
-            },
-            child: Text(existingAlarm == null ? 'Add' : 'Save'),
-          ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _DurationPickerSheet(
+        title: existingAlarm == null ? 'Add Task' : 'Edit Duration',
+        initialSeconds: existingAlarm?.durationSeconds ?? 60,
+        confirmLabel: existingAlarm == null ? 'Add' : 'Save',
+      ),
+    );
+
+    if (result != null && result > 0) {
+      if (existingAlarm == null) {
+        controller.addAlarm(result);
+      } else {
+        controller.updateAlarmDuration(existingAlarm.id, result);
+      }
+    }
+  }
+}
+
+class _DurationPickerSheet extends StatefulWidget {
+  final String title;
+  final String confirmLabel;
+  final int initialSeconds;
+
+  const _DurationPickerSheet({
+    required this.title,
+    required this.confirmLabel,
+    this.initialSeconds = 60,
+  });
+
+  @override
+  State<_DurationPickerSheet> createState() => _DurationPickerSheetState();
+}
+
+class _DurationPickerSheetState extends State<_DurationPickerSheet> {
+  late int selectedMinutes;
+  late int selectedSeconds;
+  
+  late FixedExtentScrollController minController;
+  late FixedExtentScrollController secController;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedMinutes = widget.initialSeconds ~/ 60;
+    selectedSeconds = widget.initialSeconds % 60;
+    minController = FixedExtentScrollController(initialItem: selectedMinutes);
+    secController = FixedExtentScrollController(initialItem: selectedSeconds);
+  }
+
+  @override
+  void dispose() {
+    minController.dispose();
+    secController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, -5)),
         ],
+      ),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                widget.title,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                height: 200,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Selection Highlight
+                    Center(
+                      child: Container(
+                        height: 48,
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildWheel(
+                          controller: minController,
+                          label: 'min',
+                          itemCount: 60,
+                          onChanged: (val) {
+                            setState(() => selectedMinutes = val);
+                            HapticFeedback.selectionClick();
+                          },
+                        ),
+                        const SizedBox(width: 40),
+                        _buildWheel(
+                          controller: secController,
+                          label: 'sec',
+                          itemCount: 60,
+                          onChanged: (val) {
+                            setState(() => selectedSeconds = val);
+                            HapticFeedback.selectionClick();
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        foregroundColor: colorScheme.onSurfaceVariant,
+                        minimumSize: const Size.fromHeight(64),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(color: colorScheme.outlineVariant),
+                        ),
+                      ),
+                      child: const Text(
+                        'CANCEL',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: (selectedMinutes == 0 && selectedSeconds == 0)
+                          ? null
+                          : () => Navigator.pop(context, (selectedMinutes * 60) + selectedSeconds),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: colorScheme.onPrimary,
+                        minimumSize: const Size.fromHeight(64),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        elevation: 0,
+                      ),
+                      child: Text(widget.confirmLabel, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildPicker({
+  Widget _buildWheel({
+    required FixedExtentScrollController controller,
     required String label,
-    required int value,
+    required int itemCount,
     required ValueChanged<int> onChanged,
   }) {
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return Column(
-          children: [
-            Text(label, style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.remove),
-                  onPressed: value > 0
-                      ? () => setState(() {
-                            value--;
-                            onChanged(value);
-                          })
-                      : null,
-                ),
-                Text(
-                  value.toString().padLeft(2, '0'),
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: value < 59
-                      ? () => setState(() {
-                            value++;
-                            onChanged(value);
-                          })
-                      : null,
-                ),
-              ],
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 60,
+          child: ListWheelScrollView.useDelegate(
+            controller: controller,
+            itemExtent: 48,
+            perspective: 0.005,
+            diameterRatio: 1.2,
+            physics: const FixedExtentScrollPhysics(),
+            onSelectedItemChanged: onChanged,
+            childDelegate: ListWheelChildBuilderDelegate(
+              builder: (context, index) {
+                if (index < 0 || index >= itemCount) return null;
+                return Center(
+                  child: Text(
+                    index.toString().padLeft(2, '0'),
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                  ),
+                );
+              },
+              childCount: itemCount,
             ),
-          ],
-        );
-      },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+      ],
     );
   }
 }

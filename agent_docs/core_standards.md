@@ -4,16 +4,18 @@
 
 ---
 
-## 0. Meta-Rules: Core Standards Creation & Maintenance
-These rules serve as the definitive guardrail for creating and evolving any `core_standards.md` file. They ensure that architectural integrity and intent-driven logic are preserved across all project iterations.
+## 0. Meta-Rules: Core Standards Generation & Maintenance
+These rules serve as the "Bootstrap Protocol" for creating the `core_standards.md` for any new project or platform. They ensure that architectural excellence and premium design are baked into the system's DNA from day one.
 
-1. **Architecture as Law**: This document MUST be the definitive source of truth for all architectural and data integrity standards.
-2. **Intent-Driven Blueprint**: Every rule or model defined here MUST map back to a specific high-level system intent.
-3. **Perfect Layer Isolation**: Standards MUST strictly enforce the separation of Domain, Data, and Presentation layers. No leaky abstractions (e.g., UI code in domain).
-4. **Finite State Integrity**: Every system state and transition MUST be explicitly defined to prevent race conditions or ambiguous behaviors.
-5. **Robustness & Lifecycle**: Standards MUST explicitly handle system-level challenges like background persistence, state recovery, and notification of time-sensitive events.
-6. **Deterministic Verification**: Standards MUST mandate 100% domain-layer test coverage, with every test file mapping back to the intents they verify.
-7. **Baseline Stability**: Section 0 MUST be preserved across all project iterations to maintain the integrity of the meta-standards.
+1. **Architecture as Law**: This document is the definitive technical contract for the project. No implementation may deviate from these rules without an explicit update to the standards.
+2. **Intent-Driven Blueprint**: Every technical standard MUST be a response to a specific Business Intent (found in `intents.md`). Engineering exists only to fulfill documented intents.
+3. **Strict Layer Isolation**: Standards MUST enforce a "Feature-First Clean Architecture" (or equivalent best-in-class pattern), ensuring absolute separation between Domain (Pure Logic), Data (Infrastructure), and Presentation (User Experience).
+4. **Finite State Determinism**: Every system state, transition, and edge case MUST be explicitly defined. Ambiguity in state transitions is an architectural failure.
+5. **Platform Idiomaticity & Excellence**: When generating standards for a specific platform (e.g., Flutter, Swift, React), the AI MUST use the "Premium Gold Standard" of that ecosystem (e.g., Riverpod for Flutter, SwiftUI/Combine for iOS). Never accept generic or "stock" implementation patterns.
+6. **Robustness & Lifecycle Integrity**: Standards MUST explicitly mandate the handling of platform-specific challenges: background persistence, process death recovery, and asynchronous synchronization.
+7. **Deterministic Verification**: Standards MUST require 100% test coverage of the Domain layer, with all tests mapping back to the intents they prove.
+8. **Premium UX Mandate**: Every project's standards MUST define a bespoke Design System (Typography, Palette, Interaction Patterns) that elevates the app beyond a Minimum Viable Product (MVP) to a premium experience.
+9. **Evolutionary Integrity**: This Section 0 is immutable across project iterations. It governs how the subsequent sections are re-generated if the project's technology stack or specific goals evolve.
 
 ---
 
@@ -197,3 +199,30 @@ Write `ProviderContainer` tests to verify the `ActiveSession` state machine tran
 
 ### 8.4. Intent Verification Check
 Every test file must start with a comment documenting which Intent (`// Verifies INT-XX`) it is testing.
+
+---
+
+## 9. Design & UX Standards: Premium Productivity
+To ensure a consistent, high-end experience across all visual and interactive components.
+
+### 9.1. Brand Identity & Typography
+- **Typography:** The **Outfit** font family (via `google_fonts`) is the mandatory typeface for all UI elements.
+- **Color Palette:**
+    - **Primary:** Deep Teal (`#006064`) - Used for core branding and primary actions.
+    - **Accent:** Vivid Purple (`#6A1B9A`) - Used for highlights and secondary interactions.
+    - **Status Colors:** Use standard Material 3 semantic colors (Error, Success) but styled to match the premium palette.
+
+### 9.2. Visual Language (Glassmorphism)
+- **Containers:** Use `AppTheme.glassDecoration` (or equivalent) for cards and sheets.
+    - **Borders:** Subtle, semi-translucent borders (width: 0.5 - 1.0).
+    - **Shadows:** Soft, diffused shadows instead of hard elevations.
+    - **Opacity:** Use `withValues(alpha: ...)` for translucent backgrounds to create depth.
+
+### 9.3. Interaction & Haptics
+- **Tactile Inputs:** All duration, time, or sequence pickers MUST use a wheel-style interface (`ListWheelScrollView`) rather than basic +/- buttons.
+- **Haptic Feedback:** Interactive wheel pickers and primary session actions (Start/Stop) MUST trigger `HapticFeedback.selectionClick()` or equivalent to provide physical confirmation.
+- **Motion:** State transitions (especially `ringing`) should incorporate subtle scale and opacity animations to feel "alive."
+
+### 9.4. Component Hierarchy
+- **Dialogs:** Prefer **Modal Bottom Sheets** for mobile pickers and quick actions to improve one-handed ergonomics.
+- **Banners:** Active session indicators should be floating, rounded, and visually distinct from static content.

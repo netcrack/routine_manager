@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../controllers/active_session_controller.dart';
 import '../controllers/routine_list_controller.dart';
 import '../../domain/entities/active_session.dart';
+import '../../../../core/theme/app_theme.dart';
 
 /// Routine List Screen - Home screen showing all saved routines.
 /// // Fulfills INT-01, INT-03, INT-09
@@ -54,9 +55,7 @@ class RoutineListScreen extends ConsumerWidget {
                         }
                       } on StateError catch (error) {
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(error.message)),
-                          );
+                          AppTheme.showPremiumSnackBar(context, error.message, isError: true);
                         }
                       }
                     }();
@@ -83,22 +82,40 @@ class RoutineListScreen extends ConsumerWidget {
 
   Widget _buildEmptyState(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.timer_outlined,
-            size: 100,
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'No routines yet',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          const Text('Create your first routine to get started!'),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.timer_outlined,
+                size: 80,
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+              ),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              'No routines yet',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Create your first routine to start optimizing your productivity.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -125,10 +142,14 @@ class _RoutineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      clipBehavior: Clip.antiAlias,
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: AppTheme.glassDecoration(context),
       child: InkWell(
+        borderRadius: BorderRadius.circular(20),
         onTap: (isCurrent || isOtherActive) ? null : onTap,
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -139,21 +160,29 @@ class _RoutineCard extends StatelessWidget {
                 child: Opacity(
                   opacity: isOtherActive ? 0.5 : 1.0,
                   child: Container(
-                    width: 48,
-                    height: 48,
+                    width: 56,
+                    height: 56,
                     decoration: BoxDecoration(
-                      color: isCurrent 
-                          ? Theme.of(context).colorScheme.primary 
-                          : Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        colors: isCurrent
+                            ? [colorScheme.primary, colorScheme.secondary]
+                            : [colorScheme.primaryContainer, colorScheme.primaryContainer.withValues(alpha: 0.8)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: isCurrent 
+                        ? [BoxShadow(color: colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))]
+                        : null,
                     ),
                     child: Icon(
                       isCurrent ? Icons.timer : Icons.play_arrow_rounded,
+                      size: 32,
                       color: isOtherActive
-                          ? Theme.of(context).colorScheme.onSurfaceVariant
+                          ? colorScheme.onSurfaceVariant
                           : (isCurrent
-                              ? Theme.of(context).colorScheme.onPrimary
-                              : Theme.of(context).colorScheme.onPrimaryContainer),
+                              ? colorScheme.onPrimary
+                              : colorScheme.onPrimaryContainer),
                     ),
                   ),
                 ),
@@ -161,52 +190,129 @@ class _RoutineCard extends StatelessWidget {
               const SizedBox(width: 16),
               Expanded(
                 child: Opacity(
-                  opacity: (isCurrent || isOtherActive) ? 0.6 : 1.0,
+                  opacity: isOtherActive ? 0.5 : 1.0,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         name.isEmpty ? 'Untitled Routine' : name,
-                        style: Theme.of(context).textTheme.titleLarge,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: isCurrent ? colorScheme.primary : null,
+                        ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        '$alarmCount alarms',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.alarm_rounded,
+                            size: 14,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$alarmCount alarms',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: isCurrent ? null : () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Delete Routine?'),
-                      content: const Text('This action cannot be undone.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            onDelete();
-                            Navigator.pop(context);
-                          },
-                          child: const Text('Delete'),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+              if (!isCurrent)
+                Container(
+                  decoration: BoxDecoration(
+                    color: colorScheme.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    color: colorScheme.error,
+                    onPressed: () => _confirmDelete(context, name, onDelete),
+                  ),
+                ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, String routineName, VoidCallback onConfirm) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              'Delete Routine?',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "Are you sure you want to delete '${routineName.isEmpty ? 'Untitled Routine' : routineName}'? This action cannot be undone.",
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () {
+                onConfirm();
+                Navigator.pop(context);
+                AppTheme.showPremiumSnackBar(context, 'Routine deleted');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+                minimumSize: const Size.fromHeight(64),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                elevation: 0,
+              ),
+              child: const Text('DELETE PERMANENTLY', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                minimumSize: const Size.fromHeight(64),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                ),
+              ),
+              child: const Text(
+                'CANCEL',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
         ),
       ),
     );
@@ -220,33 +326,82 @@ class _ActiveSessionBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.primaryContainer,
-      child: InkWell(
-        onTap: () => context.push('/session'),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              const Icon(Icons.timer_outlined),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'Ongoing Routine Session',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: InkWell(
+          onTap: () => context.push('/session'),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: colorScheme.secondary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.timer_rounded,
+                    color: colorScheme.onSecondary,
+                    size: 20,
+                  ),
                 ),
-              ),
-              Text(
-                session.status.name.toUpperCase(),
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Ongoing Session',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: colorScheme.onSecondaryContainer.withValues(alpha: 0.7),
+                            ),
+                      ),
+                      const Text(
+                        'Tap to return to routine',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right),
-            ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    session.status.name.toUpperCase(),
+                    style: TextStyle(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: colorScheme.onSecondaryContainer.withValues(alpha: 0.5),
+                ),
+              ],
+            ),
           ),
         ),
       ),
