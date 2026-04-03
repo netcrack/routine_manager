@@ -17,17 +17,21 @@ class ActiveSessionModel extends HiveObject {
   final int elapsedSeconds;
 
   @HiveField(3)
-  final DateTime? startTime;
+  final DateTime? anchorTime;
 
   @HiveField(4)
   final String statusName;
+
+  @HiveField(5)
+  final DateTime? sessionStartTime;
 
   ActiveSessionModel({
     required this.routineId,
     required this.activeAlarmIndex,
     required this.elapsedSeconds,
-    this.startTime,
+    this.anchorTime,
     required this.statusName,
+    this.sessionStartTime,
   });
 
   /// Convert from Domain Entity to Data Model
@@ -36,8 +40,9 @@ class ActiveSessionModel extends HiveObject {
       routineId: entity.routineId,
       activeAlarmIndex: entity.activeAlarmIndex,
       elapsedSeconds: entity.elapsedSeconds,
-      startTime: entity.startTime,
+      anchorTime: entity.anchorTime,
       statusName: entity.status.name,
+      sessionStartTime: entity.sessionStartTime,
     );
   }
 
@@ -47,7 +52,8 @@ class ActiveSessionModel extends HiveObject {
       routineId: routineId,
       activeAlarmIndex: activeAlarmIndex,
       elapsedSeconds: elapsedSeconds,
-      startTime: startTime,
+      anchorTime: anchorTime,
+      sessionStartTime: sessionStartTime,
       status: SessionStatus.values.firstWhere(
         (e) => e.name == statusName,
         orElse: () => SessionStatus.inactive,

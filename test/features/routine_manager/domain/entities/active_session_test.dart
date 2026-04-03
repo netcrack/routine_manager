@@ -3,30 +3,31 @@ import 'package:routine_manager/features/routine_manager/domain/entities/active_
 
 void main() {
   group('ActiveSession', () {
-    test('initial factory sets startTime and status running', () {
+    test('initial factory sets sessionStartTime, anchorTime and status running', () {
       final session = ActiveSession.initial('routine-123');
       
       expect(session.routineId, 'routine-123');
       expect(session.status, SessionStatus.running);
-      expect(session.startTime, isNotNull);
+      expect(session.sessionStartTime, isNotNull);
+      expect(session.anchorTime, isNotNull);
       expect(session.activeAlarmIndex, 0);
       expect(session.elapsedSeconds, 0);
     });
 
-    test('copyWith updates startTime', () {
+    test('copyWith updates anchorTime', () {
       final session = const ActiveSession(routineId: '1');
-      final newStartTime = DateTime(2023, 1, 1);
+      final newAnchorTime = DateTime(2023, 1, 1);
       
-      final updated = session.copyWith(startTime: newStartTime);
+      final updated = session.copyWith(anchorTime: newAnchorTime);
       
-      expect(updated.startTime, newStartTime);
+      expect(updated.anchorTime, newAnchorTime);
     });
 
-    test('equality includes startTime', () {
+    test('equality includes sessionStartTime and anchorTime', () {
       final date = DateTime(2023, 1, 1);
-      final s1 = ActiveSession(routineId: '1', startTime: date);
-      final s2 = ActiveSession(routineId: '1', startTime: date);
-      final s3 = ActiveSession(routineId: '1', startTime: DateTime.now());
+      final s1 = ActiveSession(routineId: '1', sessionStartTime: date, anchorTime: date);
+      final s2 = ActiveSession(routineId: '1', sessionStartTime: date, anchorTime: date);
+      final s3 = ActiveSession(routineId: '1', sessionStartTime: date, anchorTime: DateTime.now());
       
       expect(s1, s2);
       expect(s1, isNot(s3));

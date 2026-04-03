@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../controllers/active_session_controller.dart';
 import '../controllers/routine_list_controller.dart';
+import '../../../../core/di/service_providers.dart';
+import '../../domain/usecases/verify_permissions.dart';
 import '../../domain/entities/active_session.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/domain_error.dart';
 
 /// Routine List Screen - Home screen showing all saved routines.
 /// // Fulfills INT-01, INT-03, INT-09
@@ -20,6 +23,13 @@ class RoutineListScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('My Routines'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history_rounded),
+            onPressed: () => context.push('/history'),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: routinesAsync.when(
         data: (routines) {
@@ -45,23 +55,34 @@ class RoutineListScreen extends ConsumerWidget {
                   if (isCurrent) {
                     context.push('/session');
                   } else {
-                    () async {
-                      try {
-                        await ref
-                            .read(activeSessionControllerProvider.notifier)
-                            .startRoutine(routine);
-                        if (context.mounted) {
-                          context.push('/session');
-                        }
-                      } on StateError catch (error) {
-                        if (context.mounted) {
-                          AppTheme.showPremiumSnackBar(context, error.message, isError: true);
-                        }
-                      }
-                    }();
+                    _handleRoutineStart(context, ref, routine);
                   }
                 },
-                onDelete: () => ref.read(routineListProvider.notifier).deleteRoutine(routine.id),
+                onDelete: () async {
+                  final result = await ref.read(routineListProvider.notifier).deleteRoutine(routine.id);
+                  if (!context.mounted) return;
+                  
+                  result.when(
+                    onSuccess: (_) {
+                      AppTheme.showPremiumSnackBar(
+                        context,
+                        'Routine deleted successfully',
+                      );
+                    },
+                    onFailure: (error) {
+                      String message = 'Failed to delete routine';
+                      if (error == DomainError.activeSessionExists) {
+                        message = 'Cannot delete a routine while it is running';
+                      }
+                      
+                      AppTheme.showPremiumSnackBar(
+                        context,
+                        message,
+                        isError: true,
+                      );
+                    },
+                  );
+                },
               );
             },
           );
@@ -76,6 +97,54 @@ class RoutineListScreen extends ConsumerWidget {
         onPressed: () => context.push('/builder'),
         label: const Text('New Routine'),
         icon: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Future<void> _handleRoutineStart(BuildContext context, WidgetRef ref, dynamic routine) async {
+    final permissionResult = await ref.read(verifyPermissionsProvider.future);
+
+    if (permissionResult.isSuccess) {
+      try {
+        await ref.read(activeSessionControllerProvider.notifier).startRoutine(routine);
+        if (context.mounted) {
+          context.push('/session');
+        }
+      } on StateError catch (error) {
+        if (context.mounted) {
+          AppTheme.showPremiumSnackBar(context, error.message, isError: true);
+        }
+      }
+    } else {
+      if (context.mounted) {
+        _showPermissionDeniedDialog(context, ref);
+      }
+    }
+  }
+
+  void _showPermissionDeniedDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Permissions Required', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text(
+          'To provide accurate alarms, the app requires notification and background execution permissions. Please enable them in system settings.',
+          textAlign: TextAlign.center,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ref.read(notificationServiceProvider).requestPermissions();
+            },
+            child: const Text('GRANT ACCESS'),
+          ),
+        ],
       ),
     );
   }

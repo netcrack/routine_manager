@@ -4,18 +4,33 @@
 
 ---
 
-## 0. Meta-Rules: Core Standards Generation & Maintenance
-These rules serve as the "Bootstrap Protocol" for creating the `core_standards.md` for any new project or platform. They ensure that architectural excellence and premium design are baked into the system's DNA from day one.
+## 0. Meta-Rules: Core Standards Definition & Evolution
+These rules serve as the project-agnostic guardrail for defining and evolving technical standards. They ensure that all architectural decisions are atomic, verifiable, and structurally sound for downstream development.
 
+### 0.1. Rules for Documentation
 1. **Architecture as Law**: This document is the definitive technical contract for the project. No implementation may deviate from these rules without an explicit update to the standards.
 2. **Intent-Driven Blueprint**: Every technical standard MUST be a response to a specific Business Intent (found in `intents.md`). Engineering exists only to fulfill documented intents.
-3. **Strict Layer Isolation**: Standards MUST enforce a "Feature-First Clean Architecture" (or equivalent best-in-class pattern), ensuring absolute separation between Domain (Pure Logic), Data (Infrastructure), and Presentation (User Experience).
-4. **Finite State Determinism**: Every system state, transition, and edge case MUST be explicitly defined. Ambiguity in state transitions is an architectural failure.
-5. **Platform Idiomaticity & Excellence**: When generating standards for a specific platform (e.g., Flutter, Swift, React), the AI MUST use the "Premium Gold Standard" of that ecosystem (e.g., Riverpod for Flutter, SwiftUI/Combine for iOS). Never accept generic or "stock" implementation patterns.
-6. **Robustness & Lifecycle Integrity**: Standards MUST explicitly mandate the handling of platform-specific challenges: background persistence, process death recovery, and asynchronous synchronization.
-7. **Deterministic Verification**: Standards MUST require 100% test coverage of the Domain layer, with all tests mapping back to the intents they prove.
-8. **Premium UX Mandate**: Every project's standards MUST define a bespoke Design System (Typography, Palette, Interaction Patterns) that elevates the app beyond a Minimum Viable Product (MVP) to a premium experience.
-9. **Evolutionary Integrity**: This Section 0 is immutable across project iterations. It governs how the subsequent sections are re-generated if the project's technology stack or specific goals evolve.
+3. **Technical Invariants over Temporal Flows**: Standards MUST define "Laws" (invariants, schemas, and constraints), never "Steps" (temporal flows). Sequence logic belongs in `user_journeys.md`.
+4. **Deterministic Verification**: Standards MUST require 100% test coverage of the Domain layer, with all tests mapping back to the intents they prove.
+5. **Platform Idiomaticity & Excellence**: Standards MUST use the "Premium Gold Standard" of the ecosystem (e.g., Riverpod for Flutter). Never accept generic or "stock" implementation patterns.
+6. **Finite State Determinism**: Every system state, transition, and edge case MUST be explicitly defined. Ambiguity in state transitions is an architectural failure.
+7. **Robustness & Lifecycle Integrity**: Standards MUST explicitly mandate the handling of platform-specific challenges: background persistence, process death recovery, and asynchronous synchronization.
+8. **Explicit AI Acknowledgement**: The AI MUST explicitly acknowledge that it has read and understands these Meta-Rules before being permitted to edit this document.
+
+### 0.2. Document Structure
+To maintain consistency, any `core_standards.md` MUST follow this hierarchical structure:
+1. **Foundation**: Tech Stack, Feature-First Directory Structure, and Layer Responsibilities.
+2. **Domain Models**: Immutable Schemas (Entities) and Source of Truth rules.
+3. **System Execution**: Technical Contracts and Architectural Invariants (Atomic Rules).
+4. **Concurrency & Invariants**: Rules for state transitions, atomicity, and conflict resolution.
+5. **Standardized Error Handling**: Result-pattern definitions and business-logic failure mapping.
+6. **Reliability & Recovery**: Background lifecycle rules, process death recovery, and persistence strategies.
+7. **Data Lifecycle**: Versioning, migration logic, and retention policies.
+8. **Verification Strategy**: Layer-specific test requirements and Intent-mapping for tests.
+9. **Design & UX System**: Typography, color tokens, and premium interaction patterns.
+
+### 0.3. Evolutionary Integrity
+Rules 0.1 and 0.2 are immutable across project iterations. They govern how the subsequent sections are re-generated if the project's technology stack or specific goals evolve.
 
 ---
 
@@ -81,7 +96,8 @@ Satisfies: `INT-03`, `INT-05`, `INT-06`, `INT-08`, `INT-09`, `INT-11`
 *   `routineId`: `String` (The ID of the currently active routine)
 *   `activeAlarmIndex`: `int` (Points to the currently active alarm within the routine)
 *   `elapsedSeconds`: `int` (Time elapsed for the current alarm)
-*   `startTime`: `DateTime?` (Timestamp when the current alarm started or was resumed)
+*   `sessionStartTime`: `DateTime?` (Timestamp when the entire routine session was first initiated. Used for history recording (INT-15).)
+*   `anchorTime`: `DateTime?` (Timestamp when the current alarm started or was resumed. Used as the drift-free calculation anchor (INT-02).)
 *   `status`: `enum SessionStatus { inactive, running, paused, ringing }`
 
 **Strict State Transitions:**
@@ -90,36 +106,45 @@ Satisfies: `INT-03`, `INT-05`, `INT-06`, `INT-08`, `INT-09`, `INT-11`
 * `paused` -> `running` (User resumes), `inactive` (User stops)
 * `ringing` -> `running` (User moves to next alarm), `inactive` (Last alarm finished or user stops routine)
 
-### 2.4. Domain Service: `NotificationService`
+### 2.4. Entity: `RoutineRun`
+Satisfies: `INT-15`, `INT-16`, `INT-17`
+*   `id`: `String` (UUID)
+*   `routineId`: `String` (Relationship to the original routine)
+*   `routineName`: `String` (Snapshot of the name at execution time to handle deleted routines)
+*   `startTime`: `DateTime`
+*   `endTime`: `DateTime`
+*   `status`: `enum RunStatus { completed, stopped }`
+
+### 2.5. Domain Service: `NotificationService`
 Satisfies: `INT-07`, `INT-08`
 *   Must be defined as an abstract interface in `domain/`.
 *   **Ringing Requirement (`INT-08`):** Must leverage native notification flags (e.g., `FLAG_INSISTENT` on Android, `critical` sound on iOS) to ensure audio alerts loop continuously until stopped by the user.
 *   **Visual Alerting:** The presentation layer must react to the `ringing` state with distinct UI patterns (e.g., pulsing animations) while the service provides the audio trigger.
 
-### 2.5. Source of Truth Rule
-- `startTime + duration` defines the absolute source of truth for progress.
+### 2.6. Source of Truth Rule
+- `anchorTime + duration - elapsedSeconds` defines the absolute source of truth for the *current* alarm progress.
 - Timers are NOT the source of truth; they are UI heartbeat mechanisms.
 
 ---
 
-## 3. System Execution & Runtime Flows
+## 3. System Execution: Contracts & Invariants
+These rules define the mandatory technical execution requirements. For the exact temporal sequence (step-by-step) of user and system interactions, refer to the [User Journeys](file:///Users/ashokm/development/flutter_test/routine_manager/agent_docs/user_journeys.md).
 
-### 3.1. Routine Start Flow
-1. UI triggers `StartSessionUseCase`
-2. **Validate Invariants:**
-   - **Single Active Session (INT-09):** Ensure no session is currently active.
-   - **Permissions:** Verify required notification/alarm permissions are granted.
-3. Create & Persist `ActiveSession` state.
-4. Schedule system notification & AlarmManager event.
-5. Emit updated state to controller -> UI reacts.
+### 3.1. Execution Invariants (Atomic Rules)
+- **Global Session Lock (INT-09):** The domain layer MUST enforce a singular active session by checking for an existing persisted `ActiveSession` before any new routine execution is allowed.
+- **Permission Guard:** Routine execution MUST be blocked if critical permissions (Notifications, Alarm Manager) are not verified at the start of the session.
+- **Intent Mapping:** Every UseCase and Controller MUST be mapped to a specific Intent ID in a top-level comment to ensure traceability.
 
-### 3.2. Alarm Completion Flow
-1. Time threshold reached (system trigger or recovery logic).
-2. Transition state to `ringing`.
-3. `NotificationService` triggers persistent alert.
-4. User stops alarm -> `NextAlarmUseCase`:
-   - Move to next alarm OR
-   - Transition to `completed`.
+### 3.2. Alarm Lifecycle Contracts
+- **Trigger Integrity (INT-02, INT-07):** The transition to the `ringing` state MUST be driven by the system-level notification trigger. Internal timers are for UI heartbeat only and are NOT the source of truth for alarm completion.
+- **Alert Persistence (INT-08):** Once the `ringing` state is activated, the alert MUST continue (audio loop and visual focus) until the user provides an explicit terminal input (Next Alarm or Finish Routine).
+
+### 3.3. Session Finalization & Cleanup
+- **Atomic Finalization (INT-11, INT-15):** The transition from the final alarm to the `inactive` state MUST be handled as a single atomic operation that:
+    1. Finalizes the current alarm.
+    2. Persists the `RoutineRun` metadata.
+    3. Clears the `ActiveSession` persistence (releasing the lock).
+    4. Triggers the data retention pruning (INT-18) logic.
 
 ---
 
@@ -160,15 +185,23 @@ To ensure timer precision (`INT-02`) and reliable notifications (`INT-07`) when 
 
 ### 6.1. Strict Background Rule
 Do **not** rely on standard Dart `Timer.periodic` for the source of truth. Delegate scheduled alarms to system APIs (using `flutter_local_notifications` scheduling or native Alarm Managers) at the *start* of an alarm.
+- **Payload Requirement (INT-12):** Scheduled notifications MUST include a data payload containing the `routineId` to enable deterministic navigation when the user interacts with the alert.
 
-### 6.2. State Recovery Rule
-Upon app launch or resume, the `ActiveSessionController` must calculate the elapsed time using `startTime` and current time. If `now >= startTime + totalSeconds`, the session must transition immediately to the `ringing` state, even if no Dart timer was running.
+### 6.2. State Recovery Rule (Satisfies INT-13, INT-15)
+Upon app launch or resume, the `ActiveSessionController` must calculate elapsed time:
+1. If `now >= anchorTime + (duration - elapsedSeconds)`, the active alarm is overdue and should transition to `ringing`.
+2. **Zombie Session (Reliability):** Or, if `now > sessionStartTime + 24_HOURS`, the session has effectively "died" or was interrupted by a crash/termination. 
+3. **Outcome:** In the Zombie case, the system MUST transition the session directly to `Stopped`, persist a `RoutineRun` record with the `sessionStartTime` (INT-15), and release the `ActiveSession` lock (INT-09).
 
 ### 6.3. Persistence Rule
 `ActiveSession` state must be persisted to local storage (`hive`) to ensure the routine can be recovered after the app process is terminated or the device restarts.
 
 ### 6.4. Permissions Required
 The app must explicitly request and verify `Notification`, `Exact Alarms` (Android 12+), and `Background Audio` routing. If denied, the UI must block routine execution and prompt the user.
+
+### 6.5. Notification Interaction (Satisfies INT-12)
+- **Payload Capture:** The system must capture the notification payload at the App entry point.
+- **Deterministic Navigation:** Tapping a session-related notification MUST trigger the router to navigate directly to the Active Session UI, even during a cold start or background-to-foreground transition.
 
 ---
 
@@ -182,6 +215,16 @@ The app must explicitly request and verify `Notification`, `Exact Alarms` (Andro
 ### 7.2. ActiveSession Persistence
 - Must tolerate missing or additional fields (Forward/Backward compatibility).
 - Recovery logic must not fail due to schema changes; it should revert to a safe `inactive` state if data is corrupted.
+
+### 7.3. RoutineRun History Persistence
+- Run history must be persisted in a dedicated Hive box separate from Routine definitions.
+- The history list should be optimized for chronological retrieval (`INT-16`).
+- **Detail Retrieval (INT-17):** The `RoutineRun` entity must capture sufficient snapshot data (start/end times, final status, and original routine name) to allow the user to view run details even if the source routine is later modified or deleted.
+
+### 7.4. Data Retention Policy (Satisfies INT-18)
+- To prevent storage overflow, the system MUST implement a "6-Month Sliding Window" for history.
+- Any `RoutineRun` record with an `endTime` older than 180 days MUST be purged.
+- **Cleanup Trigger:** Pruning MUST occur at the end of every new execution during the `Routine Finalization Flow`.
 
 ---
 

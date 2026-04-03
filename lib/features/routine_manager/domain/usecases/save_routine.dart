@@ -16,7 +16,7 @@ class SaveRoutineUseCase {
   Future<Result<void, DomainError>> execute(Routine routine) async {
     // Business rule: Routines must have at least one alarm (Fulfills INT-01)
     if (routine.alarms.isEmpty) {
-      return const Result.failure(DomainError.validationFailed);
+      return const Result.failure(DomainError.invalidRoutine);
     }
     
     // Update the routine's updatedAt timestamp

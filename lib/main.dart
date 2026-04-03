@@ -12,6 +12,8 @@ import 'features/routine_manager/data/models/routine_model.dart';
 import 'features/routine_manager/data/models/active_session_model.dart';
 import 'features/routine_manager/data/repositories/routine_repository_impl.dart';
 import 'features/routine_manager/data/repositories/session_repository_impl.dart';
+import 'features/routine_manager/data/models/routine_run_model.dart';
+import 'features/routine_manager/data/repositories/history_repository_impl.dart';
 import 'features/routine_manager/domain/repositories/routine_repository.dart';
 
 void main() async {
@@ -22,9 +24,11 @@ void main() async {
   Hive.registerAdapter(AlarmModelAdapter());
   Hive.registerAdapter(RoutineModelAdapter());
   Hive.registerAdapter(ActiveSessionModelAdapter());
+  Hive.registerAdapter(RoutineRunModelAdapter());
   
   final routinesBox = await Hive.openBox<RoutineModel>(RoutineRepositoryImpl.boxName);
   final sessionBox = await Hive.openBox<ActiveSessionModel>('active_session_box');
+  final historyBox = await Hive.openBox<RoutineRunModel>(HistoryRepositoryImpl.boxName);
 
   // Initialize Notifications
   final plugin = FlutterLocalNotificationsPlugin();
@@ -40,6 +44,7 @@ void main() async {
       overrides: [
         routineRepositoryProvider.overrideWithValue(RoutineRepositoryImpl(routinesBox)),
         sessionRepositoryProvider.overrideWithValue(SessionRepositoryImpl(sessionBox)),
+        historyRepositoryProvider.overrideWithValue(HistoryRepositoryImpl(historyBox)),
         notificationServiceProvider.overrideWithValue(notificationService),
       ],
       child: MyApp(initialPayload: initialPayload),

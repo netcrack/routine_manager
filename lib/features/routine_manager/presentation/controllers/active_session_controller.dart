@@ -7,6 +7,7 @@ import '../../domain/entities/routine.dart';
 import '../../domain/usecases/next_alarm.dart';
 import '../../domain/usecases/pause_session.dart';
 import '../../domain/usecases/process_heartbeat.dart';
+import '../../domain/usecases/recover_session.dart';
 import '../../domain/usecases/resume_session.dart';
 import '../../domain/usecases/start_session.dart';
 import '../../domain/usecases/stop_session.dart';
@@ -43,12 +44,20 @@ class ActiveSessionController extends _$ActiveSessionController {
   }
 
   Future<void> _loadPersistedState() async {
-    final repo = ref.read(sessionRepositoryProvider);
-    final savedSession = await repo.loadSession();
-    state = savedSession;
-    if (state.status == SessionStatus.running) {
-      _recoverState();
-    }
+    final recoverUseCase = ref.read(recoverSessionUseCaseProvider);
+    final result = await recoverUseCase.execute();
+    
+    result.when(
+      onSuccess: (recoveredSession) {
+        state = recoveredSession;
+        if (state.status == SessionStatus.running) {
+          _startTimer(); // Start ticking if it was running
+        }
+      },
+      onFailure: (error) {
+        state = const ActiveSession();
+      },
+    );
   }
 
   /// Start a routine session
@@ -65,6 +74,7 @@ class ActiveSessionController extends _$ActiveSessionController {
       },
       onFailure: (error) {
         // Presentation layer handles the failure state
+        // Note: RoutineListScreen already shows a snackbar for startRoutine errors
       },
     );
   }
@@ -72,8 +82,16 @@ class ActiveSessionController extends _$ActiveSessionController {
   /// Stop current session permanently
   /// // Fulfills INT-05, Standard 5.3
   Future<void> stopSession() async {
+    final routine = _getCurrentRoutine();
+    if (routine == null) {
+      // If we can't find the routine, we still want to stop the session
+      // But we pass an empty/dummy routine or handle the error.
+      // Based on user feedback, this case shouldn't happen for active sessions.
+      return;
+    }
+
     final stopUseCase = ref.read(stopSessionUseCaseProvider);
-    final result = await stopUseCase.execute();
+    final result = await stopUseCase.execute(routine);
     
     result.when(
       onSuccess: (session) {
@@ -135,7 +153,9 @@ class ActiveSessionController extends _$ActiveSessionController {
           _timer?.cancel();
         }
       },
-      onFailure: (_) {},
+      onFailure: (error) {
+        // Log or handle appropriately
+      },
     );
   }
 
@@ -177,8 +197,27 @@ class ActiveSessionController extends _$ActiveSessionController {
 
   /// Recover state from background or relaunch
   /// // Fulfills INT-07, Core Standard 6.2
-  void _recoverState() {
-    if (state.status != SessionStatus.running) return;
-    _tick(); // Immediately trigger a heartbeat to sync state
+  void _recoverState() async {
+    final recoverUseCase = ref.read(recoverSessionUseCaseProvider);
+    final result = await recoverUseCase.execute();
+
+    result.when(
+      onSuccess: (recoveredSession) {
+        state = recoveredSession;
+        if (state.status == SessionStatus.running) {
+          _tick(); // Immediately trigger a heartbeat to sync state
+          _startTimer(); // Ensure timer is running
+        } else {
+          _timer?.cancel();
+        }
+      },
+      onFailure: (error) {
+        // In case of error during recovery, default to current state 
+        // or tick if running to stay resilient
+        if (state.status == SessionStatus.running) {
+          _tick();
+        }
+      },
+    );
   }
 }

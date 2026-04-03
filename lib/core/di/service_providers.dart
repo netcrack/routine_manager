@@ -2,6 +2,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/routine_manager/domain/services/notification_service.dart';
 import '../../features/routine_manager/domain/repositories/session_repository.dart';
+import '../../features/routine_manager/domain/repositories/history_repository.dart';
 
 part 'service_providers.g.dart';
 
@@ -15,6 +16,12 @@ NotificationService notificationService(NotificationServiceRef ref) {
 SessionRepository sessionRepository(SessionRepositoryRef ref) {
   // Overridden in ProviderScope
   throw UnimplementedError('SessionRepository must be provided');
+}
+
+@Riverpod(keepAlive: true)
+HistoryRepository historyRepository(HistoryRepositoryRef ref) {
+  // Overridden in ProviderScope
+  throw UnimplementedError('HistoryRepository must be provided');
 }
 
 @riverpod

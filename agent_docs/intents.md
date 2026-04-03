@@ -9,15 +9,24 @@ Enable users to create, run, control, and complete a single routine composed of 
 ## 0. Meta-Rules: Intent Definition & Evolution
 These rules serve as the project-agnostic guardrail for defining, mapping, and evolving system intents. They ensure that all business requirements are atomic, verifiable, and structurally sound for downstream development.
 
+### 0.1. Rules for Documentation
 1. **Outcome-Centric (Declarative)**: Intents MUST describe the desired end-state or behavior, never the implementation (UI, DB, or Framework). Avoid all project-specific technology or UI terminology.
 2. **Atomic Verifiability**: Every intent MUST define a single, verifiable "Definition of Done". If an outcome cannot be tested with a binary (Pass/Fail) result, it is too vague.
 3. **Identification & Traceability**: Every intent MUST have a unique, permanent ID (e.g., `INT-XX`) to enable deterministic mapping in architectural standards, user journeys, and test suites.
-4. **Vision Alignment**: All intents MUST collectively fulfill the project's high-level Vision Statement without contradiction.
-5. **Lifecycle Completeness**: Intents MUST account for the full lifecycle of a system capability, including its start, execution, interruption (pause/stop), and final completion.
-6. **Ambiguity Elimination**: If an intent can be interpreted in multiple ways, it MUST be decomposed into smaller, atomic intents to ensure absolute clarity for AI implementation.
-7. **Priority-Driven**: Every intent MUST be assigned a priority level (e.g., High, Medium, Low) to guide development sequencing and resource allocation.
-8. **Capability Mapping (Structural Grouping)**: Intents MUST be grouped into high-level "Capabilities" (Derived Layer). This bridges the gap between business outcomes and technical system modules.
-9. **Baseline Stability**: This Section 0 MUST be preserved across all project iterations to maintain the integrity of the intent-driven development methodology.
+4. **Lifecycle Completeness**: Intents MUST account for the full lifecycle of a system capability, including its start, execution, interruption (pause/stop), and final completion.
+5. **Ambiguity Elimination**: If an intent can be interpreted in multiple ways, it MUST be decomposed into smaller, atomic intents to ensure absolute clarity for AI implementation.
+6. **Priority-Driven**: Every intent MUST be assigned a priority level (High, Medium, Low) to guide development sequencing and resource allocation.
+7. **Explicit AI Acknowledgement**: The AI MUST explicitly acknowledge that it has read and understands these Meta-Rules before being permitted to edit this document.
+
+### 0.2. Document Structure
+To maintain consistency, any `intents.md` MUST follow this hierarchical structure:
+1. **Vision Statement**: High-level goal of the system.
+2. **Capabilities (CAP-XX)**: High-level system modules (Derived Layer).
+3. **System Intents (INT-XX)**: Table-based definitions of business outcomes.
+    - Columns: ID, Intent Name, Success Criteria (Definition of Done), Priority.
+
+### 0.3. Evolutionary Integrity
+Rules 0.1 and 0.2 are immutable across project iterations. All intents MUST collectively fulfill the project's high-level Vision Statement without contradiction.
 
 ---
 
@@ -61,4 +70,14 @@ Ensure session state continuity across backgrounding, termination, and restart.
 | ID | Intent Name | Success Criteria (Definition of Done) | Priority |
 |----|-------------|----------------------------------------|----------|
 | INT-13 | Recover Active Session | A user can reliably continue a routine after an app relaunch or system reboot, with the session state (running/paused/ringing) correctly restored based on elapsed time. | High |
+
+### CAP-05: Routine Run History
+Provide visibility into past routine executions and their outcomes.
+
+| ID | Intent Name | Success Criteria (Definition of Done) | Priority |
+|----|-------------|----------------------------------------|----------|
+| INT-15 | Persist Routine Run Data | Every routine execution that concludes (reaches Completed or Stopped state) is automatically recorded with its date, session start time, and conclusion time. | High |
+| INT-16 | Browse Routine Execution History | A user can view a chronological log of all past routine runs, showing the date and the specific routine that was executed. | Medium |
+| INT-17 | View Individual Run Details | A user can view the specific session start time and the conclusion time (completed/stopped) for any selected run in the history log. | Medium |
+| INT-18 | Maintain Sliding History Window | The system automatically prunes records older than 180 days to optimize local storage, while keeping the local database lightweight and performant. | Low |
 

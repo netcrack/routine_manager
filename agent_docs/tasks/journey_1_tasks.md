@@ -3,7 +3,7 @@
 **Fulfills:** `INT-01`, `INT-02`, `INT-04`, `INT-10`, `INT-14`
 **Reference:** `agent_docs/user_journeys.md`, `agent_docs/intents.md`, `agent_docs/core_standards.md`
 
-This document breaks down Journey 1 into actionable development tasks following the Feature-First Clean Architecture standards.
+This document breaks down Journey 1 into actionable development tasks following the Feature-First Clean Architecture and **Premium Productivity** standards.
 
 ---
 
@@ -74,7 +74,7 @@ This document breaks down Journey 1 into actionable development tasks following 
 
 ## Phase 3: Presentation Layer (State Management & UI)
 
-**Goal:** Build Riverpod providers and the Flutter UI ensuring no direct data layer access.
+**Goal:** Build Riverpod providers and the Flutter UI ensuring no direct data layer access and adhering to **Premium UX Standards**.
 
 - [x] **Task 3.1: Implement Riverpod Controllers/Providers**
   - **Paths:** `lib/features/routine_manager/presentation/controllers/...`
@@ -85,31 +85,32 @@ This document breaks down Journey 1 into actionable development tasks following 
 - [x] **Task 3.2: Build Routine List Screen (Home)**
   - **Path:** `lib/features/routine_manager/presentation/screens/routine_list_screen.dart`
   - **Description:** 
+    - **Typography:** Apply **Outfit** font family (Standard 9.1).
+    - **Aesthetics:** Use **Glassmorphism** for cards with `AppTheme.glassDecoration` (Standard 9.2).
     - Display an empty state if no routines exist.
-    - Display list view of saved routines.
-    - Floating Action Button (FAB) to trigger navigation to Builder Screen for creation.
-    - Enable tapping a routine card to navigate to the Builder Screen for editing.
+    - Floating Action Button (FAB) for creation.
+    - Enable tapping a routine card to edit.
   - **Intent:** `// Fulfills INT-01, INT-10`
 
 - [x] **Task 3.3: Build Routine Builder Screen**
   - **Path:** `lib/features/routine_manager/presentation/screens/routine_builder_screen.dart`
   - **Description:**
-    - Initialize UI with existing routine data (name, alarms, durations) if editing.
-    - Unique Routine Name text field.
-    - Add/Edit Alarm component with duration picker (minutes/seconds).
-    - ReorderableListView for dragging and dropping alarms to update `orderIndex`.
-    - "Save" button to trigger repository persistence and navigate back.
+    - **Interactive Inputs:** Duration pickers MUST use `ListWheelScrollView` with `HapticFeedback.selectionClick()` (Standard 9.3).
+    - **Ergonomics:** Prefer **Modal Bottom Sheets** for quick alarm edits (Standard 9.4).
+    - Include unique Routine Name field.
+    - ReorderableListView for dragging and dropping alarms.
   - **Intent:** `// Fulfills INT-01, INT-02, INT-04, INT-10`
 
 - [x] **Task 3.4: Implement Unhappy Paths UI State**
   - **Path:** Handled in the Builder Screen / Controllers.
   - **Description:**
     - **Empty Routine Prevention:** Handle `DomainError.validationFailed` in UI (disable save or show error highlight).
-    - **Storage Failure Response:** Display a **standard notification** ("Failed to save routine") if the UseCase returns `DomainError.storageFailure`.
+    - **Storage Failure Response:** Display a glassmorphic failure notification if the UseCase returns `DomainError.storageFailure`.
 
 - [x] **Task 3.5: Implement Bulk Duration Update UI**
   - **Path:** `lib/features/routine_manager/presentation/screens/routine_builder_screen.dart`
   - **Description:** 
-    - Add a "Set all durations" action/button in the Routine Builder.
-    - Implement the controller logic to trigger the bulk update across all current alarms in the builder state.
+    - Add a "Set all durations" action in the Routine Builder.
+    - Trigger controller logic to update all current alarms.
   - **Intent:** `// Fulfills INT-14`
+

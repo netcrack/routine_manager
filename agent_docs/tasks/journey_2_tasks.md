@@ -83,7 +83,7 @@ This document breaks down Journey 2 into actionable development tasks following 
 - [x] **Task 2.9: Build Ringing & Completed State UI**
   - **Path:** In `active_session_screen.dart` or as independent overlay dialogues/widgets depending on app route structure.
   - **Description:**
-    - **Ringing:** Pulsing UI animation, flashing colors indicating due state.
+    - **Ringing:** Pulsing UI animation, flashing colors indicating due state (Standard 9.3).
     - **Dynamic Button:** The stop/next action button must dynamically update its label based on whether the current alarm is the final entry in the routine sequence:
         - If `session.activeAlarmIndex < routine.alarms.length - 1`: Label "**Next Alarm**" (calls `nextAlarm()`).
         - If `session.activeAlarmIndex == routine.alarms.length - 1`: Label "**Finish Routine**". On tap: Call `nextAlarm()`, show a **Success Notification** ("Routine 'X' finished!"), and navigate home immediately.
@@ -108,7 +108,7 @@ This document breaks down Journey 2 into actionable development tasks following 
     - Modify use cases to calculate the target end-time and call `notificationService.scheduleNotification()` immediately upon alarm start.
     - Ensure `startTime` is set to `DateTime.now()` (or the resume time).
 
-- [ ] **Task 2.13: Implement Notification-Triggered Navigation (Stream + Router)**
+- [x] **Task 2.13: Implement Notification-Triggered Navigation (Stream + Router)**
   - **Path:** `lib/core/services/local_notification_service_impl.dart`, `lib/main.dart`
   - **Description:** 
     - Update `NotificationService` to expose a `Stream<String?> onNotificationClick`.
@@ -118,4 +118,24 @@ This document breaks down Journey 2 into actionable development tasks following 
     - Handle `getNotificationAppLaunchDetails()` for cold start navigation.
   - **Intent:** `// Fulfills INT-12`
   - **Verification:** Standard 8.3 & 8.4 verification. Manual check for background-to-foreground and killed-to-foreground navigation.
+
+- [x] **Task 2.14: Implement Atomic Finalization & History Recording**
+  - **Path:** `lib/features/routine_manager/domain/usecases/next_alarm.dart`
+  - **Description:** 
+    - Update the completion branch to instantiate and persist a `RoutineRun` entity.
+    - Capture `startTime`, `endTime`, and `routineName` snapshot.
+  - **Intent:** `// Fulfills INT-11, INT-15`
+
+- [x] **Task 2.15: Implement Data Retention Pruning**
+  - **Path:** `lib/features/routine_manager/domain/usecases/next_alarm.dart` (or dedicated UseCase)
+  - **Description:** 
+    - At the end of the finalization flow, trigger a repository call to delete `RoutineRun` records older than 180 days.
+  - **Intent:** `// Fulfills INT-18, Standard 7.4`
+
+- [x] **Task 2.16: Implement Zombie Session Recovery**
+  - **Path:** `lib/features/routine_manager/presentation/controllers/active_session_controller.dart`, `lib/features/routine_manager/domain/usecases/recover_session.dart`
+  - **Description:** 
+    - On recovery, if `now > startTime + totalSeconds + 24_HOURS`, transition state to `Stopped`.
+    - Automatically persist the truncated `RoutineRun` and release the session lock.
+  - **Intent:** `// Fulfills Standard 6.2`
 

@@ -7,7 +7,7 @@ part of 'active_session_controller.dart';
 // **************************************************************************
 
 String _$activeSessionControllerHash() =>
-    r'67342d316f69fb219cc6b1e0f4dddfd03b549ec9';
+    r'eccf2254ff51f04e21d153f5f675de8f2b913f84';
 
 /// Active Session Controller - Central state holder for the running routine session.
 /// // Fulfills INT-03, INT-05, INT-06, INT-09, INT-11

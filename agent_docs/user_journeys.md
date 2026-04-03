@@ -9,13 +9,25 @@ These mapped journeys serve as the bridge between the exact business rules (`int
 ## 0. Meta-Rules: User Journey Mapping & Validation
 These rules serve as the definitive guardrail for defining and evolving user journeys. They ensure that all system interactions are logically derived from business intents and provide a clear blueprint for UI implementation and system flow synchronization.
 
+### 0.1. Rules for Documentation
 1. **Intent-Anchored Design**: Every user journey MUST explicitly map to one or more system intents (`INT-XX`). No journey step should exist without a supporting intent.
-2. **User-System Synchronicity**: Each step MUST be decomposed into a user-facing interaction (Trigger/Action) and a corresponding internal system operation (System Flow). 
+2. **User-System Synchronicity**: Each step MUST be decomposed into a user-facing interaction (Trigger/Action) and a corresponding internal system operation (System Flow).
 3. **Atomic Journey Outcomes**: Every journey MUST lead to a deterministic "Result" that verifies the completion of the involved intents’ success criteria.
 4. **Resilient Lifecycle Mapping**: Journeys MUST explicitly account for system state persistence and recovery across all lifecycle phases (Background, Interruption, and Termination).
 5. **Negative Path Coverage**: Journeys MUST define "Unhappy Paths" (Edge Cases, Permissions, Failures) as first-class citizens to ensure graceful degradation and error handling.
 6. **Logical Flow Integrity**: Transitions between journey steps MUST be based on valid domain state changes, ensuring no illegal or impossible user flows.
-7. **Baseline Stability**: Section 0 MUST be preserved across all project iterations to maintain the integrity of the intent-driven journey methodology.
+7. **Explicit AI Acknowledgement**: The AI MUST explicitly acknowledge that it has read and understands these Meta-Rules before being permitted to edit this document.
+
+### 0.2. Document Structure
+To maintain consistency, any `user_journeys.md` MUST follow this hierarchical structure:
+1. **Journey Features**: Logical groupings of journeys (e.g., Managing Routines, Executing a Routine).
+2. **Journey Definitions**:
+    - **Trigger/Action/Result**: Definition of user-facing steps.
+    - **System Flow**: Bulleted list of technical steps linked back to INT-XX.
+3. **Unhappy Paths**: Specific section for error states and edge cases.
+
+### 0.3. Evolutionary Integrity
+Rules 0.1 and 0.2 are immutable across project iterations. They maintain the synchronicity between user experience and system engineering.
 
 ---
 
@@ -64,7 +76,7 @@ This journey covers the active session state management constraint (`INT-09`).
 
     **System Flow:**
     * Check ActiveSession lock (INT-09)
-    * Instantiate ActiveSession with Routine copy
+    * Instantiate ActiveSession with Routine copy and set both `sessionStartTime` and `anchorTime` (INT-15/INT-03)
     * Schedule background notifications for alarm durations (INT-07)
     * Persist session state for integrity/recovery
     * Start first alarm countdown timer (INT-03)
@@ -85,7 +97,7 @@ This journey covers the active session state management constraint (`INT-09`).
     **System Flow:**
     * **Trigger:** Transition session state to "Ringing", fire system notification (INT-07), and activate persistent audio (INT-08).
     * **Next (INT-03/INT-11):** Terminate audio (INT-08), finalize current alarm. 
-        * *If not last alarm:* Action button transitions to **"Next Alarm"**, selecting next sequential alarm on tap (INT-03).
+        * *If not last alarm:* Action button transitions to **"Next Alarm"**, selecting next sequential alarm on tap (INT-03). **System Flow:** Update `anchorTime` while preserving `sessionStartTime`.
         * *If last alarm:* Action button transitions to **"Finish Routine"**, initiating completion sequence on tap (INT-11).
 
 4.  **Active Session (Background & Termination)**
@@ -104,7 +116,8 @@ This journey covers the active session state management constraint (`INT-09`).
     **System Flow:**
     * Retrieve ActiveSession from persistence
     * **Notification Hook (INT-12):** Catch notification tap event and trigger navigation to Active Session Screen.
-    * Evaluate current time vs. session start/pause timestamps
+    * Evaluate current time vs. `anchorTime` for alarm overdue check (INT-02)
+    * Evaluate current time vs. `sessionStartTime` for zombie session check (Reliability)
     * Re-calculate remaining duration or trigger overdue alarm
     * Sync system state with recovery data
 
@@ -118,6 +131,7 @@ This journey covers the active session state management constraint (`INT-09`).
     * Verify final alarm termination (INT-11)
     * Purge ActiveSession persistence and release session lock (INT-09)
     * Record routine completion outcome and reset system state to **inactive**
+    * **Apply Retention Policy (INT-18):** Prune all history records older than 180 days from the persistent history storage.
     * Broadcast session completion confirmation
 
     *   *Result:* The session record is cleared, and the user is redirected to the Home Screen with a **success notification**.
@@ -154,3 +168,44 @@ This journey explicitly defines error states to prevent the AI from generating u
     * Domain logic enforces `alarms.length > 0` constraint during validation phase (INT-01).
 
     *   *Result:* The "Save" button is disabled, or tapping it highlights the "Add Alarm" button with an error color, preventing invalid routine creation.
+
+---
+
+## Journey 4: Reviewing Routine Run History
+
+This journey covers the retrieval and inspection of past routine executions, ensuring users can track their performance over time.
+**Fulfills:** `INT-15`, `INT-16`, `INT-17`, `INT-18`
+
+1.  **Routine List Screen (Home) -> History**
+    *   **Trigger:** User is on the Home Screen and taps the "History" icon in the AppBar.
+    *   **Action (Empty State):** If no `RoutineRun` records exist, the user sees an "Empty History" state with an encouraging action (e.g., "Start your first routine").
+    *   **Action (INT-16 Check):** User views a chronological list of all routine executions from the last 180 days.
+    *   **Action (INT-18 Check):** User observes that data older than 6 months is automatically pruned.
+
+    **System Flow:**
+    * Query `RoutineRun` entity from history storage, sorted by `endTime` (descending) (INT-16).
+    * Map `routineId` to current routines to determine if the source routine still exists.
+
+    *   *Result:* Navigates to the History Screen, displaying a clear log of past performance.
+
+2.  **History Screen -> Run Detail View**
+    *   **Trigger:** User taps a specific execution record in the history list.
+    *   **Action (INT-17 Check):** User views the precise session start time, end time (completed or stopped), and total duration for that run.
+    *   **Action (Data Integrity):** If the original routine was deleted, the user sees the captured name snapshot (e.g., "Morning Cardio") but the "View Routine" button is disabled.
+
+    **System Flow:**
+    * Fetch detailed `RoutineRun` metadata (INT-17).
+    * Provide a navigational link back to the `Routine Builder Screen` ONLY if the routine still exists in primary storage.
+
+    *   *Result:* The user obtains a detailed summary of their routine performance, with stable naming even for deleted routines.
+
+3.  **Zombie Session Recovery (Edge Case)**
+    *   **Trigger:** User relaunching the app after 24+ hours of inactivity during an active routine.
+    *   **Action:** System detects a stale persisted `ActiveSession`.
+    
+    **System Flow:**
+    * Validate session age vs. current time (Recovery Logic).
+    * **State Correction:** Transition state to `Stopped`, clearing the global session lock (INT-09).
+    * **State Preservation:** Automatically persist the truncated `RoutineRun` (INT-15) so the attempt is logged in history.
+    
+    *   *Result:* The user is returned to the Home Screen, and the "locked" state is cleared, allowing new routines to start.

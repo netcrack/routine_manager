@@ -6,7 +6,7 @@ part of 'routine_list_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$routineListHash() => r'3aff82682c202e758a394aa9a971465297b485cc';
+String _$routineListHash() => r'38691040f3fe8d2805ee6d29f7417b161122ab5e';
 
 /// Routine List Controller - Manages the list of routines state.
 /// // Fulfills INT-01

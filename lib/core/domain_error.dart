@@ -5,4 +5,5 @@ enum DomainError {
   activeSessionExists,
   storageFailure,
   notFound,
+  invalidRoutine,
 }

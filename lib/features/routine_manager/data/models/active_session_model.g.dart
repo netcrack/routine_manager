@@ -20,15 +20,16 @@ class ActiveSessionModelAdapter extends TypeAdapter<ActiveSessionModel> {
       routineId: fields[0] as String,
       activeAlarmIndex: fields[1] as int,
       elapsedSeconds: fields[2] as int,
-      startTime: fields[3] as DateTime?,
+      anchorTime: fields[3] as DateTime?,
       statusName: fields[4] as String,
+      sessionStartTime: fields[5] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, ActiveSessionModel obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.routineId)
       ..writeByte(1)
@@ -36,9 +37,11 @@ class ActiveSessionModelAdapter extends TypeAdapter<ActiveSessionModel> {
       ..writeByte(2)
       ..write(obj.elapsedSeconds)
       ..writeByte(3)
-      ..write(obj.startTime)
+      ..write(obj.anchorTime)
       ..writeByte(4)
-      ..write(obj.statusName);
+      ..write(obj.statusName)
+      ..writeByte(5)
+      ..write(obj.sessionStartTime);
   }
 
   @override

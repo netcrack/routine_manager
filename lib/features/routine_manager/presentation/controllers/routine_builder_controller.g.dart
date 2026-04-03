@@ -6,7 +6,7 @@ part of 'routine_builder_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$routineBuilderHash() => r'271da1cbd1a038f43e5f346cd2464038b2b803b7';
+String _$routineBuilderHash() => r'7459e77f8e961e7899db5c7a380fc9fa46d8aa35';
 
 /// Copied from Dart SDK
 class _SystemHash {

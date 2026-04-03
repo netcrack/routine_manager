@@ -15,43 +15,56 @@ class ActiveSession extends Equatable {
   final String routineId;
   final int activeAlarmIndex;
   final int elapsedSeconds;
-  final DateTime? startTime;
+  final DateTime? sessionStartTime;
+  final DateTime? anchorTime;
   final SessionStatus status;
 
   const ActiveSession({
     this.routineId = '',
     this.activeAlarmIndex = 0,
     this.elapsedSeconds = 0,
-    this.startTime,
+    this.sessionStartTime,
+    this.anchorTime,
     this.status = SessionStatus.inactive,
   });
 
   @override
-  List<Object?> get props => [routineId, activeAlarmIndex, elapsedSeconds, startTime, status];
+  List<Object?> get props => [
+        routineId,
+        activeAlarmIndex,
+        elapsedSeconds,
+        sessionStartTime,
+        anchorTime,
+        status,
+      ];
 
   ActiveSession copyWith({
     String? routineId,
     int? activeAlarmIndex,
     int? elapsedSeconds,
-    DateTime? startTime,
+    DateTime? sessionStartTime,
+    DateTime? anchorTime,
     SessionStatus? status,
   }) {
     return ActiveSession(
       routineId: routineId ?? this.routineId,
       activeAlarmIndex: activeAlarmIndex ?? this.activeAlarmIndex,
       elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
-      startTime: startTime ?? this.startTime,
+      sessionStartTime: sessionStartTime ?? this.sessionStartTime,
+      anchorTime: anchorTime ?? this.anchorTime,
       status: status ?? this.status,
     );
   }
 
   /// Initial state for a specific routine
   factory ActiveSession.initial(String routineId) {
+    final now = DateTime.now();
     return ActiveSession(
       routineId: routineId,
       activeAlarmIndex: 0,
       elapsedSeconds: 0,
-      startTime: DateTime.now(),
+      sessionStartTime: now,
+      anchorTime: now,
       status: SessionStatus.running,
     );
   }

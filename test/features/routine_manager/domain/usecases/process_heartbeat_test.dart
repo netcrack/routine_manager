@@ -1,6 +1,7 @@
 // Verifies INT-02, INT-03, INT-07 (Standard 8.4)
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:routine_manager/core/result.dart';
 import 'package:routine_manager/features/routine_manager/domain/entities/active_session.dart';
 import 'package:routine_manager/features/routine_manager/domain/entities/alarm.dart';
 import 'package:routine_manager/features/routine_manager/domain/entities/routine.dart';
@@ -41,12 +42,13 @@ void main() {
         routineId: '1',
         activeAlarmIndex: 0,
         elapsedSeconds: 0,
-        startTime: startTime,
+        anchorTime: startTime,
+        sessionStartTime: startTime,
         status: SessionStatus.running,
       );
 
-      when(() => mockSessionRepo.loadSession()).thenAnswer((_) async => session);
-      when(() => mockSessionRepo.saveSession(any())).thenAnswer((_) async => {});
+      when(() => mockSessionRepo.loadSession()).thenAnswer((_) async => Result.success(session));
+      when(() => mockSessionRepo.saveSession(any())).thenAnswer((_) async => const Result.success(null));
 
       final result = await processHeartbeat.execute(routine);
 
@@ -63,17 +65,18 @@ void main() {
         routineId: '1',
         activeAlarmIndex: 0,
         elapsedSeconds: 0,
-        startTime: startTime,
+        anchorTime: startTime,
+        sessionStartTime: startTime,
         status: SessionStatus.running,
       );
 
-      when(() => mockSessionRepo.loadSession()).thenAnswer((_) async => session);
+      when(() => mockSessionRepo.loadSession()).thenAnswer((_) async => Result.success(session));
 
       final result = await processHeartbeat.execute(routine);
 
       expect(result.isSuccess, true);
       expect(result.success.elapsedSeconds, 5);
-      expect(result.success.startTime, startTime); // Anchor must NOT change
+      expect(result.success.anchorTime, startTime); // Anchor must NOT change
       
       // CRITICAL in Frozen Anchor: Heartbeat must NOT save to DB during the run
       // to avoid double-counting and truncation risk.
@@ -86,17 +89,18 @@ void main() {
         routineId: '1',
         activeAlarmIndex: 0,
         elapsedSeconds: 3, // 3 seconds were banked before pause/resume
-        startTime: startTime,
+        anchorTime: startTime,
+        sessionStartTime: startTime,
         status: SessionStatus.running,
       );
 
-      when(() => mockSessionRepo.loadSession()).thenAnswer((_) async => session);
+      when(() => mockSessionRepo.loadSession()).thenAnswer((_) async => Result.success(session));
 
       final result = await processHeartbeat.execute(routine);
 
       expect(result.isSuccess, true);
       expect(result.success.elapsedSeconds, 8); // 3 banked + 5 current
-      expect(result.success.startTime, startTime);
+      expect(result.success.anchorTime, startTime);
     });
   });
 }

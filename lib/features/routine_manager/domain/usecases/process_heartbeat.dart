@@ -18,41 +18,49 @@ class ProcessHeartbeatUseCase {
   });
 
   Future<Result<ActiveSession, DomainError>> execute(Routine routine) async {
-    // 1. Read: Load the current Persistence state
-    final session = await sessionRepository.loadSession();
+    // 1. Read: Load the current Persistence state (Standard 4.2)
+    final sessionResult = await sessionRepository.loadSession();
+    
+    return sessionResult.fold(
+      (session) async {
+        if (session.status != SessionStatus.running) {
+          return Result.success(session);
+        }
 
-    if (session.status != SessionStatus.running) {
-      return Result.success(session);
-    }
+        final currentAlarm = routine.alarms[session.activeAlarmIndex];
+        final anchorTime = session.anchorTime;
+        if (anchorTime == null) return Result.success(session);
 
-    final currentAlarm = routine.alarms[session.activeAlarmIndex];
-    final startTime = session.startTime;
-    if (startTime == null) return Result.success(session);
+        final now = DateTime.now();
+        final realElapsedSinceAnchor = now.difference(anchorTime).inSeconds;
+        final totalElapsed = (session.elapsedSeconds + realElapsedSinceAnchor).toInt();
 
-    final now = DateTime.now();
-    final realElapsedSinceAnchor = now.difference(startTime).inSeconds;
-    final totalElapsed = session.elapsedSeconds + realElapsedSinceAnchor;
-
-
-    if (totalElapsed >= currentAlarm.durationSeconds) {
-      // 1. Alarm Finished! Transition to ringing
-      final ringingSession = session.copyWith(
-        elapsedSeconds: currentAlarm.durationSeconds,
-        status: SessionStatus.ringing,
-      );
-      
-      // Persist the final transition to Hive
-      await sessionRepository.saveSession(ringingSession);
-      return Result.success(ringingSession);
-    } else {
-      // 2. Still running. 
-      // CRITICAL: We do NOT save to Hive here. We preserve the original 
-      // 'elapsedSeconds' and 'startTime' in persistence to avoid drift.
-      // We return the "projected" session so the UI (Controller) stays in sync.
-      return Result.success(session.copyWith(
-        elapsedSeconds: totalElapsed,
-      ));
-    }
+        if (totalElapsed >= currentAlarm.durationSeconds) {
+          // 1. Alarm Finished! Transition to ringing
+          final ringingSession = session.copyWith(
+            elapsedSeconds: currentAlarm.durationSeconds,
+            status: SessionStatus.ringing,
+          );
+          
+          // Persist the final transition to Hive
+          return await sessionRepository.saveSession(ringingSession).then(
+            (result) => result.fold(
+              (_) => Result.success(ringingSession),
+              (failure) => Result.failure(failure),
+            ),
+          );
+        } else {
+          // 2. Still running. 
+          // CRITICAL: We do NOT save to Hive here. We preserve the original 
+          // 'elapsedSeconds' and 'startTime' in persistence to avoid drift.
+          // We return the "projected" session so the UI (Controller) stays in sync.
+          return Result.success(session.copyWith(
+            elapsedSeconds: totalElapsed,
+          ));
+        }
+      },
+      (failure) => Result.failure(failure),
+    );
   }
 }
 

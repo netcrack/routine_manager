@@ -7,6 +7,7 @@ import '../../domain/entities/alarm.dart';
 import '../controllers/routine_builder_controller.dart';
 import '../widgets/alarm_item.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/domain_error.dart';
 
 /// Routine Builder Screen - Screen for creating or editing a routine.
 /// // Fulfills INT-01, INT-02, INT-04, INT-10
@@ -60,18 +61,33 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
               onPressed: routine.alarms.isEmpty || _nameController.text.isEmpty
                   ? null
                   : () async {
-                      try {
-                        await controller.save();
-                        if (context.mounted) context.pop();
-                      } catch (e) {
-                        if (context.mounted) {
+                      final result = await controller.save();
+                      
+                      if (!context.mounted) return;
+
+                      result.when(
+                        onSuccess: (_) {
+                          context.pop();
                           AppTheme.showPremiumSnackBar(
                             context,
-                            'Failed to save routine: $e',
+                            'Routine saved successfully',
+                          );
+                        },
+                        onFailure: (error) {
+                          String message = 'Failed to save routine';
+                          if (error == DomainError.invalidRoutine) {
+                            message = 'Routine must have at least one task';
+                          } else if (error == DomainError.storageFailure) {
+                            message = 'Storage error: Failed to save to disk';
+                          }
+                          
+                          AppTheme.showPremiumSnackBar(
+                            context,
+                            message,
                             isError: true,
                           );
-                        }
-                      }
+                        },
+                      );
                     },
               icon: const Icon(Icons.done_all_rounded),
               label: const Text('Save'),

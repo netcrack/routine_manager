@@ -37,6 +37,21 @@ final sessionRepositoryProvider = Provider<SessionRepository>.internal(
 );
 
 typedef SessionRepositoryRef = ProviderRef<SessionRepository>;
+String _$historyRepositoryHash() => r'f3569e4f0703ce8b0210b77d9ef68637ccc6881c';
+
+/// See also [historyRepository].
+@ProviderFor(historyRepository)
+final historyRepositoryProvider = Provider<HistoryRepository>.internal(
+  historyRepository,
+  name: r'historyRepositoryProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$historyRepositoryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef HistoryRepositoryRef = ProviderRef<HistoryRepository>;
 String _$flutterLocalNotificationsPluginHash() =>
     r'2373bd9ec51aa954b67eb3a4fe59f0734c5c9d15';
 

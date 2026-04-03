@@ -7,7 +7,7 @@ part of 'stop_session.dart';
 // **************************************************************************
 
 String _$stopSessionUseCaseHash() =>
-    r'9002fc824e4d8d3eb3d00195b668dd94fafbada2';
+    r'04b8389719831766915149040d40b1eeebda4925';
 
 /// See also [stopSessionUseCase].
 @ProviderFor(stopSessionUseCase)

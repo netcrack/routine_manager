@@ -23,40 +23,51 @@ class StartSessionUseCase {
 
   Future<Result<ActiveSession, DomainError>> execute(Routine routine) async {
     // 1. Read: Load the current Persistence state (Standard 4.2)
-    final currentSession = await sessionRepository.loadSession();
+    final sessionResult = await sessionRepository.loadSession();
+    
+    return sessionResult.fold(
+      (currentSession) async {
+        // 2. Validate: Enforce Singleton Execution (INT-09, Standard 5.2)
+        if (currentSession.status != SessionStatus.inactive) {
+          return const Result.failure(DomainError.activeSessionExists);
+        }
 
-    // 2. Validate: Enforce Singleton Execution (INT-09, Standard 5.2)
-    if (currentSession.status != SessionStatus.inactive) {
-      return const Result.failure(DomainError.activeSessionExists);
-    }
+        // 2b. Validate: Enforce Non-Empty Routine Invariant (Journey 3 Refactor)
+        if (routine.alarms.isEmpty) {
+          return const Result.failure(DomainError.invalidRoutine);
+        }
 
-    // 3. System Permission Validation (INT-09, Standard 5.2)
-    var hasPermissions = await notificationService.checkPermissions();
-    if (!hasPermissions) {
-      hasPermissions = await notificationService.requestPermissions();
-    }
-    if (!hasPermissions) {
-      return const Result.failure(DomainError.permissionDenied);
-    }
+        // 3. System Permission Validation (INT-09, Standard 5.2)
+        var hasPermissions = await notificationService.checkPermissions();
+        if (!hasPermissions) {
+          hasPermissions = await notificationService.requestPermissions();
+        }
+        if (!hasPermissions) {
+          return const Result.failure(DomainError.permissionDenied);
+        }
 
-    // 4. Apply: Clear state and transition to new session
-    await notificationService.cancelAll();
-    final session = ActiveSession.initial(routine.id);
+        // 4. Apply: Clear state and transition to new session
+        await notificationService.cancelAll();
+        final session = ActiveSession.initial(routine.id);
 
-    // 5. Side Effect: Schedule first alarm notification (INT-07)
-    final firstAlarm = routine.alarms[0];
-    await notificationService.scheduleNotification(
-      id: routine.id.hashCode ^ 0,
-      title: NotificationStrings.routineTitle(routine.name),
-      body: NotificationStrings.alarmBody(0, routine.alarms.length),
-      scheduledDate: DateTime.now().add(Duration(seconds: firstAlarm.durationSeconds)),
-      payload: 'active_session',
+        // 5. Side Effect: Schedule first alarm notification (INT-07)
+        final firstAlarm = routine.alarms[0];
+        await notificationService.scheduleNotification(
+          id: routine.id.hashCode ^ 0,
+          title: NotificationStrings.routineTitle(routine.name),
+          body: NotificationStrings.alarmBody(0, routine.alarms.length),
+          scheduledDate: DateTime.now().add(Duration(seconds: firstAlarm.durationSeconds)),
+          payload: 'active_session',
+        );
+
+        // 6. Persist: Commit the final state to repository (Standard 4.2)
+        return await sessionRepository.saveSession(session).then((result) => result.fold(
+          (_) => Result.success(session),
+          (failure) => Result.failure(failure),
+        ));
+      },
+      (failure) => Result.failure(failure),
     );
-
-    // 6. Persist: Commit the final state to repository (Standard 4.2)
-    await sessionRepository.saveSession(session);
-
-    return Result.success(session);
   }
 }
 
